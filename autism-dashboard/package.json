@@ -1,0 +1,66 @@
+{
+  "name": "autism-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@mediapipe/pose": "^0.5.1675469404",
+    "@react-three/drei": "^9.105.4",
+    "@react-three/fiber": "^8.16.1",
+    "@react-three/postprocessing": "^2.15.13",
+    "@tensorflow-models/pose-detection": "^2.1.3",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-webgpu": "^4.22.0",
+    "@testing-library/dom": "^9.3.4",
+    "@testing-library/jest-dom": "^6.1.6",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/user-event": "^14.5.2",
+    "@vladmandic/face-api": "^1.7.15",
+    "axios": "^1.13.2",
+    "bootstrap": "^5.3.8",
+    "canvas-confetti": "^1.9.4",
+    "chart.js": "^4.4.0",
+    "date-fns": "^4.1.0",
+    "face-api.js": "^0.22.2",
+    "framer-motion": "^12.23.24",
+    "lodash": "^4.17.21",
+    "react": "^18.2.0",
+    "react-bootstrap": "^2.10.10",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^4.12.0",
+    "react-router-dom": "^6.20.1",
+    "react-webcam": "^7.2.0",
+    "recharts": "^3.4.1",
+    "three": "^0.181.2",
+    "uuid": "^13.0.0",
+    "web-vitals": "^3.5.0",
+    "webgazer": "^3.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.12"
+  },
+  "scripts": {
+    "start": "vite --port 3000",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
