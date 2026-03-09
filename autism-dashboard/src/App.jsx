@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Navigate } from 'react-router-dom';
 
 import { AuthProvider, AuthContext } from './AuthContext';
+import { ThemeProvider, useTheme } from './ThemeContext';
 import ProtectedRoute from './ProtectedRoute';
 import Signup from './Signup';
 import Login from './Login';
@@ -113,9 +114,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </ThemeProvider>
     </AuthProvider>
   );
 }

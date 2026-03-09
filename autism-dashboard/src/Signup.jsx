@@ -2,6 +2,9 @@ import React, { useState, useContext, useMemo } from 'react';
 import { Card, Form, Button, Alert, InputGroup, Row, Col } from 'react-bootstrap';
 import { AuthContext } from './AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import * as faceapi from '@vladmandic/face-api';
+import { useRef, useEffect } from 'react';
+
 
 const passwordRules = [
   { label: 'At least 8 characters', test: (pw) => pw.length >= 8 },
@@ -30,7 +33,6 @@ export default function Signup() {
   const [submitting, setSubmitting] = useState(false);
   const { signup } = useContext(AuthContext);
   const navigate = useNavigate();
-
   const passwordChecklist = useMemo(
     () => passwordRules.map(rule => ({
       ...rule,

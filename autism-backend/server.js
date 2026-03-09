@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 
 // Import Routes
 const authRoutes = require('./routes/auth');
@@ -9,6 +10,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const analyticsRoutes = require('./routes/analytics');
 const faceDataRoutes = require('./routes/faceData');
 const faceCaptureRoutes = require('./routes/faceCaptureRoutes');
+const videoRoutes = require('./routes/videoRoutes');
 const videoEyeTrackingRoutes = require('./routes/videoEyeTracking');
 
 const app = express();
@@ -21,6 +23,7 @@ app.use(cors({
 
 // 2. Middleware to parse JSON bodies
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 3. Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
@@ -34,6 +37,7 @@ app.use('/api/analytics', analyticsRoutes);
 // app.use('/api/face-data', faceDataRoutes);
 app.use('/api/facecapture', faceCaptureRoutes);
 app.use('/api/video-eye-tracking', videoEyeTrackingRoutes);
+app.use('/api/videos', videoRoutes);
 
 
 // Test Route

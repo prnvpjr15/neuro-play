@@ -121,15 +121,18 @@ const SoundScapeGame = ({ onComplete, onClose, speak, t }) => {
   };
 
   // Finish Handler
-  const finishGame = () => {
+const finishGame = () => {
     if (onComplete) {
         onComplete({
-            points: score,
-            rounds: 10,
+            score: score,  // Add this for compatibility
+            points: score,  // Keep this for current structure
+            correctSounds: Math.floor(score / 100), // Calculate correct answers
+            totalSounds: 10,  // Fixed 10 rounds
+            rounds: 10,      // Same as totalSounds
             accuracyPct: Math.round((score / 1000) * 100)
         });
     }
-  };
+};
 
   return (
     <div className="d-flex flex-column align-items-center justify-content-center bg-dark text-white h-100 w-100 position-absolute top-0 start-0">

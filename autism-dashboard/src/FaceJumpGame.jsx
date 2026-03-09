@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import Webcam from "react-webcam";
-import * as faceapi from "face-api.js";
+import * as faceapi from "@vladmandic/face-api";
 import { Button, Alert } from "react-bootstrap";
 import { dashboardAPI } from './config/api';
 
