@@ -2,13 +2,53 @@ const express = require('express');
 const router = express.Router();
 const GameSession = require('../models/GameSession');
 const User = require('../models/User');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const gameplayStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join('uploads', 'game-sessions');
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const gameId = req.body.gameId || 'game';
+    const userId = req.body.userId || 'unknown';
+    const ext = path.extname(file.originalname) || '.webm';
+    cb(null, `${Date.now()}_${userId}_${gameId}${ext}`);
+  }
+});
+
+const gameplayUpload = multer({
+  storage: gameplayStorage,
+  limits: { fileSize: 150 * 1024 * 1024 }
+});
+
+router.post('/upload-game-video', gameplayUpload.single('video'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No video uploaded' });
+
+    const normalizedPath = req.file.path.replace(/\\/g, '/');
+    const publicPath = `/${normalizedPath}`;
+
+    res.json({
+      success: true,
+      gameVideoUrl: publicPath,
+      gameVideoFilename: req.file.filename,
+    });
+  } catch (err) {
+    console.error('❌ Game video upload error:', err);
+    res.status(500).json({ error: 'Failed to upload game video' });
+  }
+});
 
 // --- 1. SAVE GAME SESSION ---
 // --- 1. SAVE GAME SESSION ---
 router.post('/save', async (req, res) => {
   console.log("📥 Received game session save request:", req.body);
   
-  const { userId, gameId, gameName, score, accuracy, duration, levelReached, metadata } = req.body;
+  const { userId, therapistId, username, gameId, gameName, score, levelReached, metadata, gameVideoUrl, gameVideoFilename, faceBlurred } = req.body;
 
   // Input validation
   if (!userId || !gameId || !gameName || score === undefined) {
@@ -32,13 +72,16 @@ router.post('/save', async (req, res) => {
 
     const newSession = new GameSession({
       userId,
+      therapistId,
+      username,
       gameId,
       gameName,
       score: Math.round(score),
-      accuracy: accuracy || 0,
-      duration: duration || 0,
       levelReached: levelReached || 1,
       metadata: metadata || {},
+      gameVideoUrl: gameVideoUrl || null,
+      gameVideoFilename: gameVideoFilename || null,
+      faceBlurred: faceBlurred === true || faceBlurred === "true",
       playedAt: new Date()
     });
 
@@ -52,17 +95,12 @@ router.post('/save', async (req, res) => {
     const savedSession = await newSession.save();
     console.log("✅ Session saved to database with ID:", savedSession._id);
 
-    // Update user's total points
+    // Update user's last active timestamp
     const updatedUser = await User.findByIdAndUpdate(
-      userId, 
-      { 
-        $inc: { totalPoints: Math.round(score) },
-        $set: { lastActive: new Date() }
-      },
+      userId,
+      { $set: { lastActive: new Date() } },
       { new: true }
     );
-    
-    console.log("✅ User points updated:", updatedUser.totalPoints);
     
     res.status(201).json({ 
       message: 'Session saved successfully', 
@@ -114,6 +152,82 @@ router.get('/stats/:userId', async (req, res) => {
     res.json({ gameStats, historyData });
 
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- 2.5 GET THERAPIST GAMES ---
+router.get('/therapist/:therapistId', async (req, res) => {
+  try {
+    const { therapistId } = req.params;
+
+    // Demo-friendly fallback: include sessions without therapistId linkage too.
+    const sessions = await GameSession.find({})
+      .sort({ playedAt: -1 })
+      .limit(200)
+      .lean();
+
+    // Collect unique userIds that need username lookup
+    const userIdsNeedingLookup = [...new Set(
+      sessions
+        .filter(s => !s.username && s.userId)
+        .map(s => String(s.userId))
+    )];
+
+    // Batch-lookup usernames
+    let usernameMap = {};
+    if (userIdsNeedingLookup.length > 0) {
+      try {
+        const users = await User.find(
+          { _id: { $in: userIdsNeedingLookup } },
+          { username: 1 }
+        ).lean();
+        users.forEach(u => { usernameMap[String(u._id)] = u.username; });
+      } catch (lookupErr) {
+        console.error('Username lookup error (non-fatal):', lookupErr.message);
+      }
+    }
+
+    // Enrich sessions with username
+    const enriched = sessions.map(s => ({
+      ...s,
+      userId: String(s.userId),
+      username: s.username || usernameMap[String(s.userId)] || String(s.userId),
+    }));
+
+    console.log(`🎮 Found ${enriched.length} game sessions for therapist ${therapistId}`);
+    res.json(enriched);
+  } catch (err) {
+    console.error('❌ Therapist games fetch error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- 2.6 SAVE THERAPIST GAME REVIEW ---
+router.post('/review/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { therapistNotes, reviewed, reviewedBy, reviewedAt } = req.body;
+
+    const updated = await GameSession.findByIdAndUpdate(
+      sessionId,
+      {
+        $set: {
+          therapistNotes: therapistNotes || '',
+          reviewed: reviewed || false,
+          reviewedBy: reviewedBy || null,
+          reviewedAt: reviewedAt ? new Date(reviewedAt) : new Date(),
+        }
+      },
+      { new: true }
+    );
+
+    if (!updated) return res.status(404).json({ error: 'Game session not found' });
+
+    console.log(`✅ Game session ${sessionId} marked as reviewed by ${reviewedBy}`);
+    res.json({ success: true, message: 'Game review saved', session: updated });
+  } catch (err) {
+    console.error('❌ Game review save error:', err);
     res.status(500).json({ error: err.message });
   }
 });

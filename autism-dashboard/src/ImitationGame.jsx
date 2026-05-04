@@ -5,104 +5,18 @@ import * as tf from "@tensorflow/tfjs-core";
 import "@tensorflow/tfjs-backend-webgl";
 import { Button, Spinner, Alert } from "react-bootstrap";
 import { FaCheckCircle } from "react-icons/fa";
-
-// --- SVG STICK FIGURES FOR POSES ---
-const SvgLeftHandUp = () => (
-  <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="50" cy="20" r="10" />
-    <path d="M50 30 L50 60" />
-    <path d="M50 60 L35 90" />
-    <path d="M50 60 L65 90" />
-    <path d="M50 35 L20 15" stroke="#FFD700" strokeWidth="7" />
-    <path d="M50 35 L75 50" />
-  </svg>
-);
-
-const SvgRightHandUp = () => (
-  <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="50" cy="20" r="10" />
-    <path d="M50 30 L50 60" />
-    <path d="M50 60 L35 90" />
-    <path d="M50 60 L65 90" />
-    <path d="M50 35 L25 50" />
-    <path d="M50 35 L80 15" stroke="#FFD700" strokeWidth="7" />
-  </svg>
-);
-
-const SvgBothUp = () => (
-  <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="50" cy="20" r="10" />
-    <path d="M50 30 L50 60" />
-    <path d="M50 60 L35 90" />
-    <path d="M50 60 L65 90" />
-    <path d="M50 35 L20 15" stroke="#FFD700" strokeWidth="7" />
-    <path d="M50 35 L80 15" stroke="#FFD700" strokeWidth="7" />
-  </svg>
-);
-
-const SvgTPose = () => (
-  <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="50" cy="20" r="10" />
-    <path d="M50 30 L50 60" />
-    <path d="M50 60 L35 90" />
-    <path d="M50 60 L65 90" />
-    <path d="M15 35 L85 35" stroke="#FFD700" strokeWidth="7" />
-  </svg>
-);
-
-const SvgHandsOnHead = () => (
-  <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="50" cy="20" r="10" />
-    <path d="M50 30 L50 60" />
-    <path d="M50 60 L35 90" />
-    <path d="M50 60 L65 90" />
-    <path d="M50 35 L35 15 L50 10" stroke="#FFD700" strokeWidth="7" /> 
-    <path d="M50 35 L65 15 L50 10" stroke="#FFD700" strokeWidth="7" /> 
-  </svg>
-);
-
-const SvgNamaste = () => (
-  <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="50" cy="20" r="10" />
-    <path d="M50 30 L50 60" />
-    <path d="M50 60 L35 90" />
-    <path d="M50 60 L65 90" />
-    <path d="M50 35 L35 45 L50 40" stroke="#FFD700" strokeWidth="7" /> 
-    <path d="M50 35 L65 45 L50 40" stroke="#FFD700" strokeWidth="7" /> 
-  </svg>
-);
-
-const SvgLowA = () => (
-  <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="50" cy="20" r="10" />
-    <path d="M50 30 L50 60" />
-    <path d="M50 60 L35 90" />
-    <path d="M50 60 L65 90" />
-    <path d="M50 35 L20 70" stroke="#FFD700" strokeWidth="7" /> 
-    <path d="M50 35 L80 70" stroke="#FFD700" strokeWidth="7" /> 
-  </svg>
-);
-
-const SvgSalute = () => (
-  <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="50" cy="20" r="10" />
-    <path d="M50 30 L50 60" />
-    <path d="M50 60 L35 90" />
-    <path d="M50 60 L65 90" />
-    <path d="M50 35 L25 50" /> 
-    <path d="M50 35 L80 20 L60 15" stroke="#FFD700" strokeWidth="7" /> 
-  </svg>
-);
+import { Canvas } from "@react-three/fiber";
+import ImitationRobot from "./components/ImitationRobot";
 
 const POSES = [
-  { id: "left_up", name: "Left Hand Up", component: <SvgLeftHandUp /> },
-  { id: "right_up", name: "Right Hand Up", component: <SvgRightHandUp /> },
-  { id: "both_up", name: "Victory", component: <SvgBothUp /> },
-  { id: "t_pose", name: "T-Pose", component: <SvgTPose /> },
-  { id: "hands_head", name: "Hands on Head", component: <SvgHandsOnHead /> },
-  { id: "namaste", name: "Namaste", component: <SvgNamaste /> },
-  { id: "low_a", name: "Low 'A' Pose", component: <SvgLowA /> },
-  { id: "salute", name: "Right Salute", component: <SvgSalute /> },
+  { id: "left_up", name: "Left Hand Up" },
+  { id: "right_up", name: "Right Hand Up" },
+  { id: "both_up", name: "Victory" },
+  { id: "t_pose", name: "T-Pose" },
+  { id: "hands_head", name: "Hands on Head" },
+  { id: "namaste", name: "Namaste" },
+  { id: "low_a", name: "Low 'A' Pose" },
+  { id: "salute", name: "Right Salute" },
 ];
 
 // Short phrases for between stages
@@ -203,10 +117,18 @@ const ImitationGame = ({ onComplete, onClose, speak, t }) => {
     const shoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
     if (shoulderWidth === 0) return; 
 
+    const leftHandUp = leftWrist.y < leftShoulder.y - (shoulderWidth * 0.5);
+    const rightHandUp = rightWrist.y < rightShoulder.y - (shoulderWidth * 0.5);
+    const leftHandDown = leftWrist.y > leftShoulder.y;
+    const rightHandDown = rightWrist.y > rightShoulder.y;
+
     let isMatch = false;
     switch (target.id) {
-      case "left_up": if (leftWrist.y < leftShoulder.y - (shoulderWidth * 0.5)) isMatch = true; break;
-      case "right_up": if (rightWrist.y < rightShoulder.y - (shoulderWidth * 0.5)) isMatch = true; break;
+      // Mirror-safe: accept either side for single-hand-up prompts.
+      case "left_up":
+      case "right_up":
+        if (leftHandUp || rightHandUp) isMatch = true;
+        break;
       case "both_up": if (nose && leftWrist.y < nose.y && rightWrist.y < nose.y) isMatch = true; break;
       case "t_pose": 
         const vL = Math.abs(leftWrist.y - leftShoulder.y) < (shoulderWidth * 0.4);
@@ -216,7 +138,17 @@ const ImitationGame = ({ onComplete, onClose, speak, t }) => {
       case "hands_head": if (nose && leftWrist.y < nose.y + 20 && rightWrist.y < nose.y + 20 && Math.abs(leftWrist.x - rightWrist.x) < shoulderWidth) isMatch = true; break;
       case "namaste": if (nose && leftWrist.y > nose.y && rightWrist.y > nose.y && Math.abs(leftWrist.x - rightWrist.x) < (shoulderWidth * 0.3)) isMatch = true; break;
       case "low_a": if (leftWrist.y > leftShoulder.y + (shoulderWidth * 0.5) && rightWrist.y > rightShoulder.y + (shoulderWidth * 0.5) && Math.abs(leftWrist.x - rightWrist.x) > (shoulderWidth * 1.2)) isMatch = true; break;
-      case "salute": if (nose && Math.abs(rightWrist.y - nose.y) < (shoulderWidth * 0.4) && Math.abs(rightWrist.x - nose.x) < (shoulderWidth * 0.5) && leftWrist.y > leftShoulder.y) isMatch = true; break;
+      case "salute":
+        if (nose) {
+          const rightSalute = Math.abs(rightWrist.y - nose.y) < (shoulderWidth * 0.4) &&
+            Math.abs(rightWrist.x - nose.x) < (shoulderWidth * 0.5) &&
+            leftHandDown;
+          const leftSalute = Math.abs(leftWrist.y - nose.y) < (shoulderWidth * 0.4) &&
+            Math.abs(leftWrist.x - nose.x) < (shoulderWidth * 0.5) &&
+            rightHandDown;
+          if (rightSalute || leftSalute) isMatch = true;
+        }
+        break;
       default: break;
     }
     if (isMatch) handleSuccess();
@@ -284,7 +216,13 @@ const ImitationGame = ({ onComplete, onClose, speak, t }) => {
       <div className="flex-grow-1 d-flex">
         <div className="w-50 d-flex flex-column align-items-center justify-content-center p-4" style={{ backgroundColor: gameStatus === "success" ? "#1cc88a" : "#2c3e50", transition: "background 0.3s" }}>
           <h2 className="mb-4 text-uppercase" style={{ letterSpacing: "2px" }}>Do This:</h2>
-          <div style={{ width: "300px", height: "400px", background: "rgba(255,255,255,0.1)", borderRadius: "20px", padding: "20px" }}>{POSES[currentPoseIndex].component}</div>
+          <div style={{ width: "400px", height: "500px", background: "rgba(0,0,0,0.2)", borderRadius: "20px", overflow: "hidden", position: "relative" }}>
+             <Canvas camera={{ position: [0, 2, 14], fov: 45 }} shadows>
+                <ambientLight intensity={0.6} />
+                <directionalLight position={[10, 10, 5]} intensity={1.5} castShadow />
+                <ImitationRobot poseId={POSES[currentPoseIndex].id} />
+             </Canvas>
+          </div>
           <h1 className="mt-4 display-4 fw-bold text-center">{POSES[currentPoseIndex].name}</h1>
           {gameStatus === "success" && <h2 className="text-white mt-2">Good Job!</h2>}
         </div>
@@ -292,7 +230,16 @@ const ImitationGame = ({ onComplete, onClose, speak, t }) => {
             {gameStatus === "loading" && (<div className="text-center"><Spinner animation="border" variant="primary" style={{width: "3rem", height: "3rem"}}/><p className="mt-3">Starting Camera...</p></div>)}
             {gameStatus === "finished" && (<div className="text-center z-3"><h1 className="display-1">🎉</h1><h2>Game Over!</h2><h3>Final Score: {score}</h3><Button size="lg" className="mt-3" onClick={() => onClose()}>Finish</Button></div>)}
             <Webcam ref={webcamRef} mirrored={true} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", opacity: gameStatus === "finished" ? 0.2 : 1 }} />
-            <canvas ref={canvasRef} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
+            <canvas
+              ref={canvasRef}
+              style={{
+                position: "absolute",
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                transform: "scaleX(-1)",
+              }}
+            />
         </div>
       </div>
     </div>

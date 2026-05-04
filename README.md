@@ -8,18 +8,22 @@ NeuroPlay is a comprehensive therapeutic gaming platform designed for children w
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Node](https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen)
 ![React](https://img.shields.io/badge/react-18%2B-blue)
+![MongoDB](https://img.shields.io/badge/mongodb-4.0%2B-green)
 
 ---
 
 ## 🌟 Key Features
 
 ### 🎮 Interactive Games (6 Total)
-- **Emotion Match** - Memory game for emotion recognition and empathy
-- **Reaction Test** - Pattern recognition for focus & impulse control  
-- **Face Mimic** - AI-powered facial expression recognition via webcam
-- **Imitation Game** - Body pose detection for gross motor coordination
-- **Sound Scape** - Spatial audio game for auditory localization
-- **Magic Hands** - Bubble popping for fine motor control & hand-eye coordination
+
+| # | Game | Type | AI Technology | Skills Developed |
+|---|------|------|---------------|------------------|
+| 1 | **Emotion Match** | Memory Card Game | None | Emotion recognition, memory, empathy |
+| 2 | **Reaction Test** | Pattern Recognition | None | Reflexes, focus, impulse control |
+| 3 | **Face Mimic** | Facial Expression | face-api.js | Emotional expression, facial muscle control |
+| 4 | **Imitation Game** | Body Pose Detection | TensorFlow.js PoseNet | Gross motor coordination, balance |
+| 5 | **Sound Scape** | Audio Localization | Web Audio API | Auditory processing, spatial hearing |
+| 6 | **Magic Hands** | Hand Tracking | MediaPipe Hands | Fine motor control, hand-eye coordination |
 
 ### 🎨 Customizable Theme System
 - **7 Professional Color Themes**: Light, Dark, Ocean Blue, Forest Green, Sunset Orange, Lavender Purple, High Contrast
@@ -38,10 +42,13 @@ NeuroPlay is a comprehensive therapeutic gaming platform designed for children w
 - Weekly activity dashboards
 
 ### 👥 Multi-User Support with Role-Based Access
-- **Student Accounts** - Game access & progress tracking
-- **Parent Dashboard** - Monitor child's progress & achievements
-- **Therapist Dashboard** - Clinical assessment & detailed analytics
-- **Admin Dashboard** - System management & user administration
+
+| Role | Access Level | Dashboard |
+|------|-------------|-----------|
+| **Student** | Game access, personal progress | UserDashboard |
+| **Parent** | Monitor child's progress & achievements | ParentDashboard |
+| **Therapist** | Clinical assessment & detailed analytics | TherapistDashboard |
+| **Admin** | System management & user administration | AdminDashboard |
 
 ### 🤖 AI-Powered Features
 - Real-time face detection & emotion recognition
@@ -69,32 +76,49 @@ NeuroPlay is a comprehensive therapeutic gaming platform designed for children w
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **React.js** (v18+) - UI framework
-- **React Router** - Client-side routing
-- **React Bootstrap** - Component library
-- **Framer Motion** - Animations
-- **Recharts** - Data visualization
-- **React Icons** - Icon library
-- **face-api.js** - Face detection & recognition
-- **Axios** - HTTP client
-- **Vite** - Build tool
+
+| Technology | Purpose |
+|------------|---------|
+| React.js (v18+) | UI framework |
+| React Router | Client-side routing |
+| React Bootstrap | Component library |
+| Framer Motion | Animations |
+| Recharts | Data visualization |
+| Chart.js | Advanced charts |
+| React Icons | Icon library |
+| face-api.js | Face detection & recognition |
+| @tensorflow-models/pose-detection | Body pose estimation |
+| @mediapipe/hands | Hand tracking |
+| webgazer.js | Eye gaze tracking |
+| Axios | HTTP client |
+| Vite | Build tool |
+| canvas-confetti | Celebration effects |
 
 ### Backend
-- **Node.js** - Runtime
-- **Express.js** - Web framework
-- **MongoDB** - NoSQL database
-- **Mongoose** - ODM
-- **JWT** - Authentication
-- **bcryptjs** - Password encryption
-- **multer** - File uploads
-- **cors** - Cross-origin handling
+
+| Technology | Purpose |
+|------------|---------|
+| Node.js | Runtime |
+| Express.js | Web framework |
+| MongoDB | NoSQL database |
+| Mongoose | ODM |
+| JWT | Authentication |
+| bcrypt | Password encryption |
+| multer | File uploads |
+| cors | Cross-origin handling |
+| nodemailer | Email notifications |
+| dotenv | Environment variables |
 
 ### ML/AI Libraries
-- **face-api.js** - Face detection, landmarks, expressions
-- **TensorFlow.js** - Machine learning in browser
-- **@tensorflow-models/pose-detection** - Body pose estimation
-- **Web Speech API** - Speech synthesis
-- **MediaRecorder API** - Video recording
+
+| Library | Purpose |
+|---------|---------|
+| face-api.js | Face detection, landmarks, expressions |
+| TensorFlow.js | Machine learning in browser |
+| @tensorflow-models/pose-detection | Body pose estimation |
+| MediaPipe Hands | Hand tracking |
+| WebGazer.js | Eye gaze tracking |
+| Web Speech API | Speech synthesis |
 
 ---
 
@@ -201,34 +225,97 @@ npm run dev
 ```
 NeuroPlay/
 ├── autism-backend/
-│   ├── models/              # MongoDB schemas (User, GameSession, Progress, etc.)
-│   ├── routes/              # API endpoints (auth, analytics, games, videos)
-│   ├── middleware/          # Authentication, validation
-│   ├── utils/               # Helper functions
-│   ├── uploads/             # User-generated files
-│   ├── server.js           # Main server
+│   ├── models/
+│   │   ├── Child.js           # Child user schema
+│   │   ├── FaceCapture.js     # Face data storage
+│   │   ├── GameSession.js     # Game session records
+│   │   ├── GazeTracking.js    # Eye gaze data
+│   │   ├── Progress.js        # User progress
+│   │   ├── User.js            # User authentication
+│   │   └── Video.js           # Video storage
+│   ├── routes/
+│   │   ├── analytics.js       # Analytics endpoints
+│   │   ├── auth.js            # Authentication
+│   │   ├── dashboard.js       # Dashboard data
+│   │   ├── faceCaptureRoutes.js
+│   │   ├── faceData.js
+│   │   ├── therapist.js       # Therapist endpoints
+│   │   ├── videoEyeTracking.js
+│   │   └── videoRoutes.js
+│   ├── middleware/
+│   │   ├── auth.js            # JWT authentication
+│   │   └── validation.js      # Input validation
+│   ├── utils/
+│   │   ├── demo.js
+│   │   └── videoAnalyzer.js
+│   ├── uploads/
+│   │   ├── face_data/         # Face capture data
+│   │   └── videos/            # Uploaded videos
+│   ├── scripts/
+│   │   └── cleanupFaceData.js
+│   ├── server.js              # Main server entry
+│   ├── checkSchema.js
+│   ├── demo.js
+│   ├── patch.js
+│   ├── verifyDetailed.js
+│   ├── verifyEyeTrackingData.js
 │   └── package.json
 │
 ├── autism-dashboard/
 │   ├── src/
-│   │   ├── components/     # Reusable components
-│   │   ├── UserDashboard.jsx      # Student interface
-│   │   ├── ParentDashboard.jsx    # Parent monitoring
-│   │   ├── TherapistDashboard.jsx # Clinical tools
-│   │   ├── AdminDashboard.jsx     # System management
-│   │   ├── [Game Components]      # 6 Game implementations
-│   │   ├── ThemeContext.jsx       # Theme management
-│   │   ├── AuthContext.jsx        # Auth state
-│   │   ├── App.jsx               # Main app
-│   │   └── index.jsx             # React entry
+│   │   ├── components/
+│   │   │   ├── FaceCaptureComponent.jsx
+│   │   │   ├── FaceDataViewer.jsx
+│   │   │   ├── ImitationRobot.jsx
+│   │   │   └── ...
+│   │   ├── config/
+│   │   ├── services/
+│   │   ├── utils/
+│   │   ├── App.jsx            # Main app component
+│   │   ├── App.css
+│   │   ├── index.jsx          # React entry point
+│   │   ├── index.css
+│   │   ├── AuthContext.jsx    # Authentication context
+│   │   ├── ThemeContext.jsx   # Theme management
+│   │   ├── UserDashboard.jsx  # Student interface
+│   │   ├── ParentDashboard.jsx
+│   │   ├── TherapistDashboard.jsx
+│   │   ├── AdminDashboard.jsx
+│   │   ├── Login.jsx
+│   │   ├── Signup.jsx
+│   │   ├── ForgotPassword.jsx
+│   │   ├── ResetPassword.jsx
+│   │   ├── ProtectedRoute.jsx
+│   │   ├── EmotionMatchGame.jsx
+│   │   ├── ReactionTestGame.jsx
+│   │   ├── AutisticCameraGame.jsx  # Face Mimic
+│   │   ├── ImitationGame.jsx
+│   │   ├── SoundScapeGame.jsx
+│   │   ├── MagicHandsGame.jsx
+│   │   ├── EyeGazeTracker.jsx
+│   │   ├── ExpressionQuest.jsx
+│   │   ├── SonicSimonGame.jsx
+│   │   └── ThemeStyles.css
 │   ├── public/
-│   │   ├── models/         # ML model files
-│   │   └── emotions/       # Game assets
+│   │   ├── manifest.json
+│   │   ├── robots.txt
+│   │   ├── emotions/          # Game emotion assets
+│   │   └── models/            # ML model files
+│   │       ├── face_expression_model-*
+│   │       ├── face_landmark_68_model-*
+│   │       └── tiny_face_detector_model-*
+│   ├── index.html
 │   ├── vite.config.js
 │   └── package.json
 │
-├── THEME_IMPLEMENTATION_GUIDE.md
+├── create-test-user.js        # Test user creation script
+├── test-backend.js            # Backend tests
+├── test-project.js            # Project tests
+├── start-project.bat          # Windows startup script
+├── start-project.ps1          # PowerShell startup script
 ├── README.md
+├── PROJECT_DOCUMENTATION.md   # Detailed documentation
+├── THEME_IMPLEMENTATION_GUIDE.md
 └── .gitignore
 ```
 
@@ -249,6 +336,7 @@ NeuroPlay/
 - **Game History** - View past game sessions
 - **Analytics** - See detailed skill development
 - **Reports** - Generate progress reports
+- **Child Management** - Link and manage children accounts
 
 ### 👨‍⚕️ For Therapists
 - **Clinical Assessment** - Access detailed game analytics
@@ -269,15 +357,15 @@ NeuroPlay/
 
 Users can select from 7 themes via sidebar buttons:
 
-| Theme | Best For |
-|-------|----------|
-| Light | Default, daytime |
-| Dark | Reduced eye strain |
-| Ocean Blue | Calming, professional |
-| Forest Green | Natural, soothing |
-| Sunset Orange | Energetic, warm |
-| Lavender Purple | Creative, calm |
-| High Contrast | Visual impairments |
+| Theme | Best For | Colors |
+|-------|----------|--------|
+| Light | Default, daytime | Gray/Blue |
+| Dark | Reduced eye strain | Dark gray/Light blue |
+| Ocean Blue | Calming, professional | Blue tones |
+| Forest Green | Natural, soothing | Green tones |
+| Sunset Orange | Energetic, warm | Orange/Brown |
+| Lavender Purple | Creative, calm | Purple tones |
+| High Contrast | Visual impairments | Black/White/Yellow |
 
 See [THEME_IMPLEMENTATION_GUIDE.md](./THEME_IMPLEMENTATION_GUIDE.md) for technical details.
 
@@ -285,84 +373,178 @@ See [THEME_IMPLEMENTATION_GUIDE.md](./THEME_IMPLEMENTATION_GUIDE.md) for technic
 
 ## 🎮 Game Details
 
-### Emotion Match
+### 1. Emotion Match
 - **Type**: Memory card game
 - **Skills**: Emotion recognition, memory, empathy
 - **Duration**: 5-10 minutes
-- **Levels**: 3 difficulty levels
+- **Levels**: 3 difficulty levels (Easy/Medium/Hard)
 - **Metrics**: Accuracy, speed, mastered emotions
+- **Features**: Framer Motion animations, confetti celebration, voice instructions
 
-### Reaction Test
-- **Type**: Pattern recognition
+### 2. Reaction Test (Sonic Simon)
+- **Type**: Pattern recognition (Simon Says style)
 - **Skills**: Reflexes, focus, impulse control
 - **Duration**: 2-3 minutes
-- **Rounds**: 5 different patterns
+- **Rounds**: Progressive pattern length
 - **Metrics**: Reaction time, errors, reflex tier
+- **Features**: Sound feedback, combo multiplier, visual patterns
 
-### Face Mimic
+### 3. Face Mimic (AutisticCameraGame)
 - **Type**: Real-time facial recognition (AI)
-- **Skills**: Emotional expression, facial control
+- **Skills**: Emotional expression, facial muscle control
 - **Duration**: 5-10 minutes
 - **Input**: Webcam
-- **Metrics**: Expression range, muscle control, scans
+- **Metrics**: Expression range, muscle control, scan count
+- **AI**: face-api.js with TensorFlow.js backend
+- **Emotions**: Happy, Surprised, Angry, Neutral
 
-### Imitation Game
+### 4. Imitation Game
 - **Type**: Body pose detection (AI)
 - **Skills**: Gross motor coordination, balance
 - **Duration**: 5-15 minutes
 - **Input**: Webcam
 - **Metrics**: Balance, stability, pose count
+- **AI**: TensorFlow.js PoseNet
+- **Features**: Real-time pose visualization, form analysis
 
-### Sound Scape
+### 5. Sound Scape
 - **Type**: Audio localization
 - **Skills**: Auditory processing, pitch recognition
 - **Duration**: 5-8 minutes
 - **Input**: Speakers/Headphones
 - **Metrics**: Audio focus, L/R balance, pitch sense
+- **Features**: Spatial audio, directional sounds
 
-### Magic Hands
+### 6. Magic Hands
 - **Type**: Hand tracking & bubble popping
 - **Skills**: Fine motor control, hand-eye coordination
 - **Duration**: 5-10 minutes
 - **Input**: Webcam
 - **Metrics**: Bubbles popped, accuracy, combo streak
+- **AI**: MediaPipe Hands
 
 ---
 
 ## 🔐 Security Features
 
 - ✅ JWT token-based authentication
-- ✅ Password hashing (bcryptjs)
-- ✅ CORS protection
+- ✅ Password hashing (bcrypt)
+- ✅ CORS protection (whitelisted origins)
 - ✅ Input validation & sanitization
 - ✅ Secure file upload handling
 - ✅ Error handling & logging
-- ✅ Rate limiting (recommended)
+- ✅ Protected routes with role-based access
 
 ---
 
 ## 📊 API Endpoints
 
-### Auth
-- `POST /api/auth/signup` - Register user
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/logout` - Logout
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/signup` | Register new user |
+| POST | `/api/auth/login` | Login user |
+| POST | `/api/auth/logout` | Logout user |
+| POST | `/api/auth/forgot-password` | Request password reset |
+| POST | `/api/auth/reset-password` | Reset password |
+
+### Dashboard
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/dashboard/:userId` | Get user dashboard data |
+| GET | `/api/dashboard/children/:parentId` | Get children for parent |
 
 ### Analytics
-- `POST /api/analytics/save` - Save game session
-- `GET /api/analytics/stats/:userId` - Get user stats
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/analytics/save` | Save game session |
+| GET | `/api/analytics/stats/:userId` | Get user statistics |
+| GET | `/api/analytics/progress/:userId` | Get progress over time |
 
-### Games
-- `POST /api/games/save-session` - Record game play
-- `GET /api/games/:userId` - Get game history
+### Face Capture
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/facecapture/upload` | Upload face data |
+| GET | `/api/facecapture/:userId` | Get user face data |
+| GET | `/api/facecapture/session/:sessionId` | Get specific session |
 
-### Videos
-- `POST /api/videos/upload` - Upload video
-- `GET /api/videos/:userId` - Get videos
+### Video
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/videos/upload` | Upload video |
+| GET | `/api/videos/:userId` | Get user videos |
+| DELETE | `/api/videos/:id` | Delete video |
+
+### Eye Tracking
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/video-eye-tracking/save` | Save gaze data |
+| GET | `/api/video-eye-tracking/:sessionId` | Get gaze data |
+
+### Therapist
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/therapist/students` | Get therapist's students |
+| GET | `/api/therapist/student/:id` | Get student details |
+| POST | `/api/therapist/feedback` | Save feedback |
 
 ---
 
-## 🐛 Troubleshooting
+## �️ Database Schema
+
+### User Collection
+```javascript
+{
+  _id: ObjectId,
+  name: String,
+  email: String,
+  password: String (hashed),
+  role: String (student/parent/therapist/admin),
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### GameSession Collection
+```javascript
+{
+  _id: ObjectId,
+  userId: ObjectId,
+  gameType: String,
+  score: Number,
+  duration: Number,
+  metrics: Object,
+  createdAt: Date
+}
+```
+
+### Progress Collection
+```javascript
+{
+  _id: ObjectId,
+  userId: ObjectId,
+  gameType: String,
+  level: Number,
+  totalScore: Number,
+  sessionsCompleted: Number,
+  lastPlayed: Date
+}
+```
+
+### FaceCapture Collection
+```javascript
+{
+  _id: ObjectId,
+  userId: ObjectId,
+  sessionId: ObjectId,
+  expressions: Object,
+  timestamp: Date
+}
+```
+
+---
+
+## �🐛 Troubleshooting
 
 ### MongoDB Connection Error
 ```bash
@@ -379,15 +561,37 @@ kill -9 <PID>
 ```
 
 ### Face Detection Not Working
-- Check webcam permissions
-- Refresh browser
-- Ensure good lighting
+- Check webcam permissions in browser
+- Refresh browser page
+- Ensure good lighting conditions
 - Clear browser cache
+- Use Chrome/Edge for best compatibility
+
+### Eye Tracking Not Working
+- Allow camera access
+- Calibrate eye tracker following on-screen instructions
+- Avoid wearing glasses if possible
+- Ensure face is visible in camera frame
 
 ### Theme Not Saving
 - Check localStorage is enabled
 - Clear browser data
 - Try incognito/private window
+
+### Model Loading Errors
+- Ensure ML model files exist in `public/models/`
+- Check browser console for specific errors
+- Verify internet connection for initial model download
+
+---
+
+## 📈 Performance Considerations
+
+- **Model Loading**: ML models load asynchronously; show loading states
+- **Camera Access**: Request permissions early in game flow
+- **Database Queries**: Use indexes on userId and createdAt fields
+- **File Uploads**: Limit video size to 50MB
+- **Theme Switching**: Use CSS transitions for smooth experience
 
 ---
 
@@ -449,9 +653,11 @@ MIT License - See [LICENSE](LICENSE) file for details
 
 ## 🙏 Acknowledgments
 
-- **face-api.js** team for face detection
-- **TensorFlow.js** for ML capabilities
-- **React & Node.js** communities
+- [face-api.js](https://github.com/justadudewhohacks/face-api.js/) for face detection
+- [TensorFlow.js](https://www.tensorflow.org/js) for ML in browser
+- [MediaPipe](https://mediapipe.dev/) for hand and pose tracking
+- [WebGazer.js](https://webgazer.cs.brown.edu/) for eye tracking
+- [React](https://reactjs.org/) and the React community
 - Autism research community for insights
 - All contributors and testers
 
@@ -465,6 +671,8 @@ MIT License - See [LICENSE](LICENSE) file for details
 
 ---
 
-**Made with ❤️ for children with autism and their families.**
+**Built with ❤️ for children with autism** 🧩🎯
 
-*Last Updated: March 8, 2026*
+---
+
+*Last Updated: April 21, 2026*

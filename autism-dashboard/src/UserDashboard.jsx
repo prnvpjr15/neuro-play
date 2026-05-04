@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import {
   Card,
@@ -14,6 +14,7 @@ import {
   Tab,
   Tabs,
   ProgressBar,
+  Form,
 } from "react-bootstrap";
 import {
   FaBrain,
@@ -62,6 +63,7 @@ import {
   FaEdit,
   FaDownload,
   FaEllipsisV,
+  FaShieldAlt,
 } from "react-icons/fa";
 import {
   BarChart,
@@ -94,6 +96,8 @@ import EyeGazeTracker from "./EyeGazeTracker";
 import VideoLibraryComponent from "./components/VideoLibraryComponent";
 import MagicHandsGame from "./MagicHandsGame";
 import { useTheme } from "./ThemeContext";
+
+import * as faceapi from "@vladmandic/face-api";
 
 // ----- Constants & Helpers -----
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -1264,20 +1268,21 @@ const PatternClickerGame = ({ onComplete, onClose, t, speak }) => {
     console.log("⏱️ Average reaction time:", avgReactionTime);
 
     // Calculate score: faster = higher score
-    // Base: 1000ms = 0 points, 100ms = 100 points
-    let score = Math.max(0, Math.min(100, (1000 - avgReactionTime) / 9));
+    // Formula: (1000 - avgReactionTime) / 1000 * 100
+    // Examples: 100ms = 90pts, 200ms = 80pts, 300ms = 70pts, 400ms = 60pts
+    let score = Math.max(0, Math.min(100, ((1000 - avgReactionTime) / 1000) * 100));
 
-    // Penalty for errors
-    const errorPenalty = errors * 15;
+    // Penalty for errors (reduce penalty from 15 to 5 per error)
+    const errorPenalty = errors * 5;
     score = Math.max(0, score - errorPenalty);
 
-    // Bonus for completing all rounds
+    // Bonus for completing all rounds (increased from 20 to 30)
     if (reactionTimes.length >= 5) {
-      score += 20;
+      score += 30;
     }
 
-    // Ensure score is between 0-100
-    score = Math.min(100, Math.max(30, score));
+    // Ensure score is between 0-100 (removed minimum floor of 30)
+    score = Math.min(100, Math.max(0, score));
 
     console.log("🏆 Final calculated score:", Math.round(score));
 
@@ -1287,24 +1292,26 @@ const PatternClickerGame = ({ onComplete, onClose, t, speak }) => {
     };
   };
 
-  // const handleGameComplete = () => {
-  //   if (gameFinishedRef.current) return;
-  //   gameFinishedRef.current = true;
-  //   const { score, avgReactionTime } = calculateFinalScore();
+  const handleGameComplete = () => {
+    const { score, avgReactionTime } = calculateFinalScore();
 
-  //   console.log("🎮 Sending game completion data:");
-  //   console.log("📊 Score:", score);
-  //   console.log("⏱️ Times:", reactionTimes);
-  //   console.log("❌ Errors:", errors);
+    console.log("🎮 Sending game completion data:");
+    console.log("📊 Score:", score);
+    console.log("⏱️ Times:", reactionTimes);
+    console.log("❌ Errors:", errors);
 
-  //   onComplete({
-  //     times: reactionTimes,
-  //     errors: errors,
-  //     score: score,
-  //     reactionTime: avgReactionTime,
-  //     totalRounds: reactionTimes.length,
-  //   });
-  // };
+    if (onComplete) {
+      onComplete({
+        times: reactionTimes,
+        errors: errors,
+        score: score,
+        reactionTime: avgReactionTime,
+        totalRounds: reactionTimes.length,
+      });
+    }
+    
+    if (onClose) onClose();
+  };
 
   const getBoxStyle = () => {
     const base = {
@@ -1469,46 +1476,45 @@ const UserDashboard = () => {
           : null;
 
       if (parsedUser) {
-        // Ensure we have both id and _id fields
         const user = {
-          name: "Explorer",
-          totalPoints: 1250,
-          level: 5,
+          name: parsedUser.username || parsedUser.name || "Explorer",
+          totalPoints: parsedUser.totalPoints || 1250,
+          level: parsedUser.level || 5,
+          avatar: parsedUser.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
           ...parsedUser,
         };
 
-        // Ensure both id fields are present
-        if (user.id && !user._id) {
-          user._id = user.id;
-        } else if (user._id && !user.id) {
-          user.id = user._id;
-        }
-
-        // Ensure name field exists (use username if available)
-        if (!user.name && user.username) {
-          user.name = user.username;
-        }
+        if (user.id && !user._id) user._id = user.id;
+        else if (user._id && !user.id) user.id = user._id;
 
         return user;
       }
-
-      return {
-        name: "Explorer",
-        totalPoints: 1250,
-        level: 5,
-        id: null,
-        _id: null,
-      };
     } catch (e) {
-      return {
-        name: "Explorer",
-        totalPoints: 1250,
-        level: 5,
-        id: null,
-        _id: null,
-      };
+      console.error("Profile load error", e);
     }
+    return {
+      name: "Explorer",
+      totalPoints: 1250,
+      level: 5,
+      id: null,
+      _id: null,
+      avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
+    };
   });
+
+  // Face Blurring for Games
+  const [blurGameplay, setBlurGameplay] = useState(true);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const videoHiddenRef = useRef(null);
+  const canvasRef = useRef(null);
+  const faceBoxRef = useRef(null);
+  const faceBoxTimeRef = useRef(0);
+  const drawLoopRef = useRef(null);
+  const faceDetectRef = useRef(null);
+  const DRAW_FPS = 30;
+  const FACE_HZ = 100;
+  const BOX_EXPIRE_MS = 1000;
+  const BOX_PAD = 0.2;
 
   const [reviewData, setReviewData] = useState(null);
   const [selectedAnalyticsGame, setSelectedAnalyticsGame] = useState(null);
@@ -1519,6 +1525,10 @@ const UserDashboard = () => {
   const [showSoundScapeModal, setShowSoundScapeModal] = useState(false);
   const [historyData, setHistoryData] = useState([]);
   const [showMagicHandsModal, setShowMagicHandsModal] = useState(false);
+  const [isGameRecording, setIsGameRecording] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const recordingStreamRef = useRef(null);
+  const recordedChunksRef = useRef([]);
 
   const GAME_META = {
     [GAME_IDS.EMOTION_MATCH]: {
@@ -1574,6 +1584,189 @@ const UserDashboard = () => {
     [GAME_IDS.MAGIC_HANDS]: { totalPlays: 0, highScore: 0 },
   });
 
+  // --- Load Models for Gameplay Blur ---
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const MODEL_URL = "/models";
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        ]);
+        setModelsLoaded(true);
+        console.log("✅ Face models loaded for arcade");
+      } catch (err) {
+        console.error("❌ Failed to load face models", err);
+      }
+    };
+    loadModels();
+  }, []);
+
+  const startBlurLoops = useCallback(() => {
+    const draw = () => {
+      const vid = videoHiddenRef.current;
+      const canvas = canvasRef.current;
+      if (!vid || !canvas || vid.readyState < 2) {
+        drawLoopRef.current = setTimeout(draw, 1000 / DRAW_FPS);
+        return;
+      }
+
+      if (canvas.width !== vid.videoWidth) canvas.width = vid.videoWidth || 640;
+      if (canvas.height !== vid.videoHeight) canvas.height = vid.videoHeight || 480;
+
+      const ctx = canvas.getContext("2d");
+      const W = canvas.width;
+      const H = canvas.height;
+
+      ctx.save();
+      ctx.translate(W, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(vid, 0, 0, W, H);
+      ctx.restore();
+
+      if (blurGameplay) {
+        const box = faceBoxRef.current;
+        const boxAge = Date.now() - faceBoxTimeRef.current;
+
+        if (box && boxAge < BOX_EXPIRE_MS) {
+          const { x, y, width: fw, height: fh } = box;
+          const mx = Math.max(0, W - (x + fw) - fw * BOX_PAD);
+          const my = Math.max(0, y - fh * BOX_PAD);
+          const mw = Math.min(W - mx, fw * (1 + 2 * BOX_PAD));
+          const mh = Math.min(H - my, fh * (1 + 2 * BOX_PAD));
+
+          ctx.save();
+          ctx.filter = "blur(25px)";
+          ctx.drawImage(canvas, mx, my, mw, mh, mx, my, mw, mh);
+          ctx.restore();
+        } else {
+          ctx.save();
+          ctx.filter = "blur(25px)";
+          ctx.drawImage(canvas, 0, 0, W, H * 0.7, 0, 0, W, H * 0.7);
+          ctx.restore();
+        }
+      }
+      drawLoopRef.current = setTimeout(draw, 1000 / DRAW_FPS);
+    };
+    draw();
+
+    faceDetectRef.current = setInterval(async () => {
+      const vid = videoHiddenRef.current;
+      if (!vid || vid.readyState < 2) return;
+      try {
+        const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3 }));
+        if (det) {
+          faceBoxRef.current = det.box;
+          faceBoxTimeRef.current = Date.now();
+        }
+      } catch (e) {}
+    }, FACE_HZ);
+  }, [blurGameplay]);
+
+  const stopBlurLoops = useCallback(() => {
+    if (drawLoopRef.current) clearTimeout(drawLoopRef.current);
+    if (faceDetectRef.current) clearInterval(faceDetectRef.current);
+    drawLoopRef.current = null;
+    faceDetectRef.current = null;
+  }, []);
+
+  const stopGameplayRecorder = useCallback(async () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return null;
+
+    return new Promise((resolve) => {
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType || "video/webm" });
+        recordedChunksRef.current = [];
+        mediaRecorderRef.current = null;
+        setIsGameRecording(false);
+        stopBlurLoops();
+
+        if (videoHiddenRef.current?.srcObject) {
+          videoHiddenRef.current.srcObject.getTracks().forEach((track) => track.stop());
+          videoHiddenRef.current.srcObject = null;
+        }
+        resolve(blob.size > 0 ? blob : null);
+      };
+
+      if (recorder.state !== "inactive") {
+        recorder.stop();
+      } else {
+        resolve(null);
+      }
+    });
+  }, [stopBlurLoops]);
+
+  const startGameplayRecorder = useCallback(async () => {
+    if (isGameRecording || mediaRecorderRef.current) return;
+    if (!navigator?.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      
+      if (!videoHiddenRef.current) {
+        videoHiddenRef.current = document.createElement("video");
+      }
+      if (!canvasRef.current) {
+        canvasRef.current = document.createElement("canvas");
+      }
+
+      videoHiddenRef.current.srcObject = stream;
+      await videoHiddenRef.current.play();
+      startBlurLoops();
+
+      const captureStream = canvasRef.current.captureStream(DRAW_FPS);
+      
+      let mimeType = "video/webm;codecs=vp9";
+      if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = "video/webm;codecs=vp8";
+      if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = "video/webm";
+
+      const recorder = new MediaRecorder(captureStream, { mimeType });
+      recordedChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) recordedChunksRef.current.push(event.data);
+      };
+      recorder.start(1000);
+      mediaRecorderRef.current = recorder;
+      setIsGameRecording(true);
+      console.log("🎥 Gameplay recording started with privacy blur pipeline");
+    } catch (err) {
+      console.warn("Gameplay recording unavailable:", err?.message || err);
+    }
+  }, [isGameRecording, startBlurLoops, blurGameplay]);
+
+  useEffect(() => {
+    const anyGameModalOpen =
+      showEmotionModal ||
+      showPatternModal ||
+      showCameraModal ||
+      showImitationModal ||
+      showSoundScapeModal ||
+      showMagicHandsModal;
+
+    if (anyGameModalOpen) {
+      startGameplayRecorder();
+    }
+  }, [
+    showEmotionModal,
+    showPatternModal,
+    showCameraModal,
+    showImitationModal,
+    showSoundScapeModal,
+    showMagicHandsModal,
+    startGameplayRecorder,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+      if (recordingStreamRef.current) {
+        recordingStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
   // First, let's add more debugging to see EXACTLY what the SoundScape game returns
   const processGameResult = async (gameId, rawData) => {
     console.log("🎮 Game completed - Starting processGameResult");
@@ -1594,6 +1787,7 @@ const UserDashboard = () => {
     let traits = [];
     let radarData = [];
     let gameName = t[GAME_META[gameId]?.nameKey] || "Game";
+    let reviewExtraData = null;
 
     // --- SCORING LOGIC ---
     console.log(`🎯 Processing game ${gameId}: ${gameName}`);
@@ -1687,53 +1881,29 @@ const UserDashboard = () => {
         },
       ];
     } else if (gameId === GAME_IDS.FACE_MIMIC) {
-      console.log("🎮 Face Mimic data:", rawData);
-
-      // Get the emotion data
+      console.log("🎮 Face Mimic data received:", rawData);
+      
+      // Get the emotion data for analytics/feedback
       const emotionData = rawData.emotionData || [];
       const struggleOrder = rawData.struggleOrder || "";
       const timeData = rawData.timeData || {};
 
-      // Calculate score based on time (faster = better)
-      let score = 0;
-      if (emotionData.length > 0) {
-        // Base score: 100% for completing all emotions
-        let baseScore = 100;
-
-        // Bonus for faster completion (max 20 points)
-        const totalTime = timeData.totalTime || 0;
-        const maxExpectedTime = 60000; // 1 minute total is expected
-        const timeBonus = Math.max(0, 20 * (1 - totalTime / maxExpectedTime));
-
-        // Bonus for consistency (max 15 points)
-        const times = emotionData.map((e) => e.timeTaken);
-        const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
-        const stdDev = Math.sqrt(
-          times.reduce((sq, n) => sq + Math.pow(n - avgTime, 2), 0) /
-            times.length,
-        );
-        const consistencyBonus = Math.max(0, 15 * (1 - stdDev / avgTime));
-
-        // Penalty for very slow emotions (max -30 points)
-        let timePenalty = 0;
-        const slowThreshold = 30000; // 30 seconds per emotion is too slow
-        emotionData.forEach((emotion) => {
-          if (emotion.timeTaken > slowThreshold) {
-            timePenalty +=
-              (10 * (emotion.timeTaken - slowThreshold)) / slowThreshold;
-          }
-        });
-        timePenalty = Math.min(30, timePenalty);
-
-        score = baseScore + timeBonus + consistencyBonus - timePenalty;
-        score = Math.min(100, Math.max(30, score));
+      // Use the points calculated by the game (baseScore 400 + bonuses)
+      // Scale from 0-400 game points to 0-100 dashboard score
+      const gamePoints = rawData.points || 0;
+      score = 0;
+      
+      if (gamePoints > 0) {
+        // Game returns points up to ~430 (baseScore 400 + bonuses)
+        // Scale to 100 scale and ensure proper distribution
+        score = (gamePoints / 430) * 100;
+        score = Math.min(100, Math.max(0, Math.round(score)));
+        console.log(`✅ Using game score: gamePoints=${gamePoints} → dashboardScore=${score}`);
       } else {
-        // Fallback calculation
-        const gameScore = rawData.points || rawData.score || 0;
-        const attempts = rawData.attempts || 4;
-        const maxPossibleScore = attempts * 100;
-        score = (gameScore / maxPossibleScore) * 100;
-        score = Math.min(100, Math.max(30, score));
+        // Fallback if no points provided (shouldn't happen)
+        // Minimum 30 points for participation
+        score = emotionData.length > 0 ? 30 : 0;
+        console.log(`⚠️ No game points, fallback score=${score}`);
       }
 
       console.log(`🎮 Final Face Mimic score: ${score}`);
@@ -1788,34 +1958,14 @@ const UserDashboard = () => {
         { subject: "Confidence", A: Math.min(100, score - 15), fullMark: 100 },
       ];
 
-      // Add emotion performance data to the review data
-      const reviewDataExtra = {
+      // Store extra data for review modal
+      reviewExtraData = {
         emotionPerformance: timeData.sortedEmotions || [],
         struggleOrder: struggleOrder,
-        averageTimePerEmotion: timeData.averageTime
+        averageTime: timeData.averageTime
           ? Math.round(timeData.averageTime / 1000)
           : 0,
       };
-
-      // ... rest of existing code for saving to database ...
-
-      // When setting reviewData, include the extra data:
-      setReviewData({
-        gameName: gameName,
-        score: Math.round(score),
-        feedback,
-        metricLabel: metricLabel || "Score",
-        metricValue: metricValue || "High",
-        supportLevel,
-        radarData,
-        traits: traits || ["Learner"],
-        chartType: "bar",
-        chartData: [],
-        // ADD THIS:
-        emotionPerformance: reviewDataExtra.emotionPerformance,
-        struggleOrder: reviewDataExtra.struggleOrder,
-        averageTime: reviewDataExtra.averageTimePerEmotion,
-      });
     } else if (gameId === GAME_IDS.IMITATION_GAME) {
       console.log("🎮 Imitation Game data:", rawData);
       // Try multiple ways to get data
@@ -2011,17 +2161,39 @@ const UserDashboard = () => {
 
     // Save to database if we have a valid user ID
     if (userId && userId.length === 24) {
+      let gameVideoUrl = null;
+      let gameVideoFilename = null;
+      try {
+        const recordingBlob = await stopGameplayRecorder();
+        if (recordingBlob) {
+          const videoForm = new FormData();
+          videoForm.append("video", recordingBlob, `gameplay_${Date.now()}.webm`);
+          videoForm.append("userId", userId);
+          videoForm.append("gameId", String(gameId));
+          const uploadResp = await axios.post(
+            "http://localhost:4000/api/analytics/upload-game-video",
+            videoForm,
+            { headers: { "Content-Type": "multipart/form-data" }, timeout: 15000 }
+          );
+          gameVideoUrl = uploadResp?.data?.gameVideoUrl || null;
+          gameVideoFilename = uploadResp?.data?.gameVideoFilename || null;
+        }
+      } catch (uploadErr) {
+        console.warn("Game behavior video upload skipped:", uploadErr?.message || uploadErr);
+      }
+
       const payload = {
         userId: userId,
+        therapistId: userProfile?.therapistId,
+        username: userProfile?.name || userProfile?.username || "Explorer",
         gameId,
         gameName: gameName,
         score: Math.round(score),
-        accuracy:
-          rawData && typeof rawData === "object" ? rawData.accuracy || 0 : 0,
-        duration:
-          rawData && typeof rawData === "object" ? rawData.timeSpent || 0 : 0,
         levelReached:
           rawData && typeof rawData === "object" ? rawData.level || 1 : 1,
+        gameVideoUrl,
+        gameVideoFilename,
+        faceBlurred: blurGameplay,
         metadata:
           rawData && typeof rawData === "object" ? rawData.metadata || {} : {},
       };
@@ -2050,6 +2222,7 @@ const UserDashboard = () => {
       console.warn("⚠️ Cannot save to database - Invalid user ID");
       console.log("User ID found:", userId);
       console.log("Expected: 24-character MongoDB ObjectId");
+      await stopGameplayRecorder();
     }
 
     // Update local state regardless of database save
@@ -2079,6 +2252,7 @@ const UserDashboard = () => {
       traits: traits || ["Learner"],
       chartType: "bar",
       chartData: [],
+      ...(reviewExtraData || {})
     });
 
     console.log("✅ Review modal data set successfully!");
@@ -2187,9 +2361,24 @@ const UserDashboard = () => {
               <h3 className="fw-bold" style={{ color: colors.textPrimary }}>
                 {t.arcade}
               </h3>
-              <Badge style={{ backgroundColor: colors.bgCard, color: colors.textPrimary, borderColor: colors.borderColor }} className="border px-3 py-2">
-                5 {t.games_available}
-              </Badge>
+              <div className="d-flex align-items-center gap-3">
+                <div className="d-flex align-items-center gap-2 bg-light p-2 rounded-pill px-3 border shadow-sm">
+                  <FaShieldAlt className={blurGameplay ? "text-success" : "text-muted"} />
+                  <span className="small fw-bold" style={{ color: "#555" }}>Privacy Blur</span>
+                  <Form.Check 
+                    type="switch"
+                    id="privacy-blur-switch"
+                    checked={blurGameplay}
+                    onChange={(e) => {
+                      setBlurGameplay(e.target.checked);
+                      speak(e.target.checked ? "Privacy Blur Enabled" : "Privacy Blur Disabled");
+                    }}
+                  />
+                </div>
+                <Badge style={{ backgroundColor: colors.bgCard, color: colors.textPrimary, borderColor: colors.borderColor }} className="border px-3 py-2">
+                  6 {t.games_available}
+                </Badge>
+              </div>
             </div>
             <Row className="g-4">
               {Object.keys(GAME_META).map((gameId) => {
@@ -2464,20 +2653,6 @@ const UserDashboard = () => {
           >
             <FaVideo className="me-3" />
             <span className="fw-bold">{t.videos}</span>
-          </Nav.Link>
-          <Nav.Link
-            active={activeTab === "analytics"}
-            onClick={() => {
-              setActiveTab("analytics");
-              speak(t.progress);
-            }}
-            className="rounded-3 px-3 py-3"
-            style={{
-              color: activeTab === "analytics" ? colors.accentColor : colors.textSecondary,
-              backgroundColor: activeTab === "analytics" ? colors.hoverBg : "transparent",
-            }}
-          >
-            <FaChartPie className="sidebar-icon" /> {t.progress}
           </Nav.Link>
         </Nav>
 
@@ -2758,7 +2933,6 @@ const UserDashboard = () => {
                 onCapture={handleFaceCapture}
                 compactMode={true}
               />
-              <EyeGazeTracker onGazeUpdate={handleGazeUpdate} />
             </Card.Body>
             <Card.Footer
               className="text-center"

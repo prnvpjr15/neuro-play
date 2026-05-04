@@ -35,6 +35,8 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
   const spawnTimerRef = useRef(null);
   const cameraRef = useRef(null);
   const handsModelRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const musicNodesRef = useRef(null);
   const lastSpokenRef = useRef("");
   const hasSpokenIntro = useRef(false);
   const gameStartTimeRef = useRef(null);
@@ -43,6 +45,7 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [score, setScore] = useState(0);
   const [totalBubbles, setTotalBubbles] = useState(0);
+  const [missed, setMissed] = useState(0);
   const [combo, setCombo] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
 
@@ -54,6 +57,107 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
       hasSpokenIntro.current = true;
     }
   }, [gameStatus, speak, t]);
+
+  // ─── Audio helpers ───
+  const getAudioContext = useCallback(() => {
+    if (audioContextRef.current) return audioContextRef.current;
+
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return null;
+
+    audioContextRef.current = new AudioContext();
+    return audioContextRef.current;
+  }, []);
+
+  const playPopSound = useCallback(() => {
+    const audioCtx = getAudioContext();
+    if (!audioCtx) return;
+
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().catch(() => {});
+    }
+
+    const oscillator = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    oscillator.type = ["triangle", "sine", "square"][Math.floor(Math.random() * 3)];
+    oscillator.frequency.value = 520 + Math.random() * 220;
+
+    gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+
+    oscillator.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.12);
+  }, [getAudioContext]);
+
+  const startBackgroundMusic = useCallback(() => {
+    const audioCtx = getAudioContext();
+    if (!audioCtx || musicNodesRef.current) return;
+
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().catch(() => {});
+    }
+
+    const mainGain = audioCtx.createGain();
+    mainGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    mainGain.connect(audioCtx.destination);
+
+    const notes = [220, 262, 330, 392, 440];
+    const oscillators = notes.map((frequency, index) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = index % 2 === 0 ? "sine" : "triangle";
+      osc.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+      gain.connect(mainGain);
+      osc.connect(gain);
+      osc.start(audioCtx.currentTime);
+      return { osc, gain };
+    });
+
+    const updateMelody = () => {
+      oscillators.forEach((node, index) => {
+        const now = audioCtx.currentTime;
+        node.gain.gain.cancelScheduledValues(now);
+        node.gain.gain.setValueAtTime(0.02, now);
+        node.gain.gain.linearRampToValueAtTime(0.01, now + 3);
+        node.gain.gain.linearRampToValueAtTime(0.02, now + 6);
+      });
+    };
+
+    const interval = window.setInterval(updateMelody, 2600);
+    musicNodesRef.current = { mainGain, oscillators, interval };
+  }, [getAudioContext]);
+
+  const stopBackgroundMusic = useCallback(() => {
+    const music = musicNodesRef.current;
+    if (!music) return;
+
+    if (music.interval) {
+      clearInterval(music.interval);
+    }
+
+    const stopTime = getAudioContext()?.currentTime || 0;
+    music.oscillators.forEach(({ osc, gain }) => {
+      gain.gain.exponentialRampToValueAtTime(0.0001, stopTime + 0.5);
+      osc.stop(stopTime + 0.5);
+    });
+
+    musicNodesRef.current = null;
+  }, [getAudioContext]);
+
+  useEffect(() => {
+    if (gameStatus === "playing") {
+      startBackgroundMusic();
+    }
+    if (gameStatus === "finished") {
+      stopBackgroundMusic();
+    }
+    return () => stopBackgroundMusic();
+  }, [gameStatus, startBackgroundMusic, stopBackgroundMusic]);
 
   // ─── Create a bubble ───
   const createBubble = useCallback((canvasW, canvasH) => {
@@ -301,6 +405,7 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
         // Check if missed
         if (bubble.y > canvas.height + bubble.radius) {
           statsRef.current.missed += 1;
+          setMissed((prev) => prev + 1);
           setCombo(0);
           return; // remove
         }
@@ -328,6 +433,9 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
               setBestCombo((best) => Math.max(best, newCombo));
               return newCombo;
             });
+
+            // Sound effect
+            playPopSound();
 
             // Speak success
             if (speak) {
@@ -440,6 +548,7 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     if (spawnTimerRef.current) clearInterval(spawnTimerRef.current);
     if (cameraRef.current) cameraRef.current.stop();
+    stopBackgroundMusic();
 
     const s = statsRef.current;
     const accuracy = s.total > 0 ? Math.round((s.popped / s.total) * 100) : 0;
@@ -541,7 +650,7 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
 
                 <div className="d-flex justify-content-between mt-2 mb-1">
                   <span className="text-white-50 small">Missed</span>
-                  <span className="fw-bold text-danger">{totalBubbles - score}</span>
+                  <span className="fw-bold text-danger">{missed}</span>
                 </div>
               </div>
             </>

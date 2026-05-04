@@ -94,9 +94,13 @@ const AutisticCameraGame = ({ onComplete, onClose, speak, t }) => {
   const lastSpokenPhrase = useRef("");
   const emotionScores = useRef([]); // Store detailed data for each emotion
   const currentEmotionTimer = useRef(null); // Store start time reference
+  const modelsLoadingRef = useRef(false); // Prevent double-loading models
 
-  // 1. Load AI Models & Speak Intro
+  // 1. Load AI Models & Speak Intro (only once on mount)
   useEffect(() => {
+    if (modelsLoadingRef.current) return; // Already loading or loaded
+    modelsLoadingRef.current = true;
+
     const loadModels = async () => {
       try {
         await faceapi.tf.setBackend("webgl");
@@ -116,7 +120,7 @@ const AutisticCameraGame = ({ onComplete, onClose, speak, t }) => {
         setModelsLoaded(true);
         setGameStatus("playing");
 
-        // Reset emotion scores
+        // Reset emotion scores only on first load
         emotionScores.current = [];
 
         // Speak intro ONLY ONCE
@@ -133,7 +137,7 @@ const AutisticCameraGame = ({ onComplete, onClose, speak, t }) => {
       }
     };
     loadModels();
-  }, [speak, t]);
+  }, []); // Empty dependency - run ONLY on mount
 
   // Start timer when emotion changes
   useEffect(() => {
@@ -266,9 +270,17 @@ const AutisticCameraGame = ({ onComplete, onClose, speak, t }) => {
   };
 
   const finishGame = () => {
-    if (gameFinishedRef.current) return;
+    console.log("🏁 finishGame called, gameFinishedRef.current =", gameFinishedRef.current);
+    if (gameFinishedRef.current) {
+      console.log("⚠️ Game already finished, aborting");
+      return;
+    }
     gameFinishedRef.current = true;
+    console.log("✅ Setting gameFinishedRef to true");
+    
     if (onComplete) {
+      console.log("✅ onComplete callback exists, emotionScores.current =", emotionScores.current);
+      
       // Calculate total time and metrics
       const totalTime = emotionScores.current.reduce(
         (sum, emotion) => sum + emotion.timeTaken,
@@ -302,7 +314,9 @@ const AutisticCameraGame = ({ onComplete, onClose, speak, t }) => {
         baseScore + timeBonus + consistencyBonus,
       );
 
-      onComplete({
+      console.log(`📊 Score calculation: baseScore=${baseScore}, timeBonus=${timeBonus.toFixed(1)}, consistencyBonus=${consistencyBonus.toFixed(1)}, finalScore=${finalScore.toFixed(1)}`);
+      
+      const completionData = {
         points: Math.round(finalScore),
         accuracyPct: 100,
         attempts: TARGET_EMOTIONS.length,
@@ -324,7 +338,12 @@ const AutisticCameraGame = ({ onComplete, onClose, speak, t }) => {
           consistencyBonus: consistencyBonus,
           finalScore: finalScore,
         },
-      });
+      };
+      
+      console.log("🎮 Calling onComplete with data:", completionData);
+      onComplete(completionData);
+    } else {
+      console.log("❌ No onComplete callback provided!");
     }
   };
 

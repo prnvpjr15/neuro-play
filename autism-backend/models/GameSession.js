@@ -6,6 +6,14 @@ const GameSessionSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  therapistId: {
+    type: String,
+    required: false
+  },
+  username: {
+    type: String,
+    required: false
+  },
   gameId: {
     type: Number, // 1: Emotion, 2: Pattern, 3: Face, 4: Imitation, 5: Sound
     required: true
@@ -20,23 +28,52 @@ const GameSessionSchema = new mongoose.Schema({
   },
   accuracy: {
     type: Number,
-    default: 0
+    required: false
   },
   duration: {
     type: Number, // in seconds
-    default: 0
+    required: false
   },
   levelReached: {
     type: Number,
     default: 1
   },
   metadata: {
-    type: Object, // Flexible field for game-specific data (e.g., "emotions_missed": ["sad"])
+    type: Object,
     default: {}
+  },
+  gameVideoUrl: {
+    type: String,
+    default: null
+  },
+  gameVideoFilename: {
+    type: String,
+    default: null
+  },
+  faceBlurred: {
+    type: Boolean,
+    default: false
   },
   playedAt: {
     type: Date,
     default: Date.now
+  },
+  // Therapist review fields
+  reviewed: {
+    type: Boolean,
+    default: false
+  },
+  therapistNotes: {
+    type: String,
+    default: ''
+  },
+  reviewedBy: {
+    type: String,
+    default: null
+  },
+  reviewedAt: {
+    type: Date,
+    default: null
   }
 });
 

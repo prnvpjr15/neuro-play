@@ -5,6 +5,7 @@ const GameAnalytics = require('../models/GameAnalytics');
 const FaceCapture = require('../models/FaceCapture');
 const User = require('../models/User');
 const SessionVideo = require('../models/SessionVideo'); // You need this model
+const GameSession = require('../models/GameSession');
 
 // Get all patients for a therapist
 router.get('/patients/:therapistId', async (req, res) => {
@@ -96,6 +97,92 @@ router.get('/analytics/:therapistId', async (req, res) => {
   }
 });
 
+// Get game sessions for a specific user (for therapist dashboard)
+router.get('/games/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const mongoose = require("mongoose");
+
+    // Convert string userId to ObjectId if needed
+    let userObjectId;
+    try {
+      userObjectId = mongoose.Types.ObjectId.isValid(userId)
+        ? new mongoose.Types.ObjectId(userId)
+        : userId;
+    } catch (e) {
+      userObjectId = userId;
+    }
+
+    // Verify the user exists
+    const user = await User.findById(userObjectId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get all game sessions for this user
+    const gameSessions = await GameSession.find({ userId: userObjectId })
+      .sort({ playedAt: -1 })
+      .limit(50); // Limit to prevent too much data
+
+    // Group by game type for summary
+    const gameStats = {};
+    gameSessions.forEach(session => {
+      if (!gameStats[session.gameId]) {
+        gameStats[session.gameId] = {
+          gameName: session.gameName,
+          totalPlays: 0,
+          highScore: 0,
+          avgScore: 0,
+          totalScore: 0,
+          avgAccuracy: 0,
+          totalAccuracy: 0,
+          recentSessions: []
+        };
+      }
+
+      const stats = gameStats[session.gameId];
+      stats.totalPlays += 1;
+      stats.highScore = Math.max(stats.highScore, session.score);
+      stats.totalScore += session.score;
+      stats.totalAccuracy += session.accuracy || 0;
+
+      // Keep track of recent 5 sessions for each game
+      if (stats.recentSessions.length < 5) {
+        stats.recentSessions.push({
+          score: session.score,
+          accuracy: session.accuracy,
+          duration: session.duration,
+          levelReached: session.levelReached,
+          playedAt: session.playedAt,
+          metadata: session.metadata
+        });
+      }
+    });
+
+    // Calculate averages
+    Object.keys(gameStats).forEach(gameId => {
+      const stats = gameStats[gameId];
+      stats.avgScore = Math.round(stats.totalScore / stats.totalPlays);
+      stats.avgAccuracy = Math.round(stats.totalAccuracy / stats.totalPlays);
+    });
+
+    res.json({
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email
+      },
+      gameStats,
+      recentSessions: gameSessions.slice(0, 20), // Most recent 20 sessions
+      totalSessions: gameSessions.length
+    });
+
+  } catch (error) {
+    console.error('Error fetching game sessions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get messages for therapist
 router.get('/messages/:therapistId', async (req, res) => {
   try {
@@ -167,6 +254,72 @@ router.post('/messages', async (req, res) => {
     res.json({ success: true, message: 'Message sent successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/therapist/games/all   ← Perfect for folder overview
+router.get('/games/all', async (req, res) => {
+  try {
+    const gameSessions = await GameSession.aggregate([
+      {
+        $group: {
+          _id: "$userId",
+          totalSessions: { $sum: 1 },
+          games: {
+            $push: {
+              gameName: "$gameName",
+              score: "$score",
+              accuracy: "$accuracy",
+              playedAt: "$playedAt"
+            }
+          }
+        }
+      }
+    ]);
+
+    const result = {};
+
+    for (const item of gameSessions) {
+      const userId = item._id.toString();
+      const gameMap = {};
+
+      item.games.forEach(gs => {
+        if (!gameMap[gs.gameName]) {
+          gameMap[gs.gameName] = {
+            gameName: gs.gameName,
+            totalPlays: 0,
+            highScore: 0,
+            totalScore: 0,
+            totalAccuracy: 0
+          };
+        }
+        const g = gameMap[gs.gameName];
+        g.totalPlays++;
+        g.highScore = Math.max(g.highScore, gs.score);
+        g.totalScore += gs.score;
+        g.totalAccuracy += gs.accuracy || 0;
+      });
+
+      // Calculate averages
+      Object.values(gameMap).forEach(g => {
+        g.avgScore = Math.round(g.totalScore / g.totalPlays);
+        g.avgAccuracy = Math.round(g.totalAccuracy / g.totalPlays);
+      });
+
+      result[userId] = {
+        totalSessions: item.totalSessions,
+        gameStats: gameMap,
+        lastPlayed: item.games.reduce((latest, g) => 
+          new Date(g.playedAt) > new Date(latest.playedAt) ? g : latest
+        ).playedAt
+      };
+    }
+
+    res.json(result);   // ← { "userId1": {totalSessions, gameStats, lastPlayed}, ... }
+
+  } catch (error) {
+    console.error("Failed to fetch all game data:", error);
+    res.status(500).json({ error: "Failed to load game overview" });
   }
 });
 

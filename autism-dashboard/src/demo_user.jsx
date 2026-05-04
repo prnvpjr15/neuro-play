@@ -1444,6 +1444,7 @@ const UserDashboard = () => {
     let traits = [];
     let radarData = [];
     let gameName = t[GAME_META[gameId]?.nameKey] || "Game";
+    let reviewExtraData = null;
 
     // --- SCORING LOGIC ---
     console.log(`🎯 Processing game ${gameId}: ${gameName}`);
@@ -1545,7 +1546,7 @@ const UserDashboard = () => {
       const timeData = rawData.timeData || {};
 
       // Calculate score based on time (faster = better)
-      let score = 0;
+      score = 0;
       if (emotionData.length > 0) {
         // Base score: 100% for completing all emotions
         let baseScore = 100;
@@ -1638,34 +1639,17 @@ const UserDashboard = () => {
         { subject: "Confidence", A: Math.min(100, score - 15), fullMark: 100 },
       ];
 
-      // Add emotion performance data to the review data
-      const reviewDataExtra = {
+      // Store extra data for review modal
+      reviewExtraData = {
         emotionPerformance: timeData.sortedEmotions || [],
         struggleOrder: struggleOrder,
-        averageTimePerEmotion: timeData.averageTime
+        averageTime: timeData.averageTime
           ? Math.round(timeData.averageTime / 1000)
           : 0,
       };
 
       // ... rest of existing code for saving to database ...
 
-      // When setting reviewData, include the extra data:
-      setReviewData({
-        gameName: gameName,
-        score: Math.round(score),
-        feedback,
-        metricLabel: metricLabel || "Score",
-        metricValue: metricValue || "High",
-        supportLevel,
-        radarData,
-        traits: traits || ["Learner"],
-        chartType: "bar",
-        chartData: [],
-        // ADD THIS:
-        emotionPerformance: reviewDataExtra.emotionPerformance,
-        struggleOrder: reviewDataExtra.struggleOrder,
-        averageTime: reviewDataExtra.averageTimePerEmotion,
-      });
     } else if (gameId === GAME_IDS.IMITATION_GAME) {
       console.log("🎮 Imitation Game data:", rawData);
       // Try multiple ways to get data
@@ -1829,6 +1813,8 @@ const UserDashboard = () => {
     if (userId && userId.length === 24) {
       const payload = {
         userId: userId,
+        therapistId: userProfile?.therapistId,
+        username: userProfile?.name || userProfile?.username || "Explorer",
         gameId,
         gameName: gameName,
         score: Math.round(score),
@@ -1895,6 +1881,7 @@ const UserDashboard = () => {
       traits: traits || ["Learner"],
       chartType: "bar",
       chartData: [],
+      ...(reviewExtraData || {})
     });
 
     console.log("✅ Review modal data set successfully!");

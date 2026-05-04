@@ -684,7 +684,7 @@ export function analyzeGazeData(gazeData) {
   const valid = gazeData.filter(d => d.faceDetected);
 
   const avg =
-    valid.reduce((acc, curr) => acc + curr.attentionScore, 0) /
+    valid.reduce((acc, curr) => acc + (parseFloat(curr.attentionScore) || 0), 0) /
     (valid.length || 1);
 
   const detectionRate = (valid.length / gazeData.length) * 100;
