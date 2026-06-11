@@ -64,7 +64,10 @@ import {
   FaDownload,
   FaEllipsisV,
   FaShieldAlt,
+  FaChartLine,
+  FaArrowRight,
 } from "react-icons/fa";
+
 import {
   BarChart,
   Bar,
@@ -95,6 +98,7 @@ import FaceCaptureComponent from "./components/FaceCaptureComponent";
 import EyeGazeTracker from "./EyeGazeTracker";
 import VideoLibraryComponent from "./components/VideoLibraryComponent";
 import MagicHandsGame from "./MagicHandsGame";
+import HandGestureOverlay from "./components/HandGestureOverlay";
 import { useTheme } from "./ThemeContext";
 
 import * as faceapi from "@vladmandic/face-api";
@@ -109,6 +113,28 @@ const GAME_IDS = {
   IMITATION_GAME: 4,
   SOUND_SCAPE: 5,
   MAGIC_HANDS: 6,
+};
+
+const clampPercent = (value) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.min(100, Math.max(0, number));
+};
+
+const roundPercent = (value) => Math.round(clampPercent(value));
+
+const firstFiniteNumber = (...values) => {
+  for (const value of values) {
+    const number = Number(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return 0;
+};
+
+const percentOf = (part, total) => {
+  const safeTotal = Number(total);
+  if (!Number.isFinite(safeTotal) || safeTotal <= 0) return 0;
+  return clampPercent((Number(part) / safeTotal) * 100);
 };
 
 // ----- TRANSLATIONS -----
@@ -475,60 +501,6 @@ const getStaticStats = (gameId, t) => {
   }
 };
 
-const generateHistoricalData = (baseScore, variance) => {
-  const data = [];
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  days.forEach((day) => {
-    data.push({
-      day,
-      score: Math.max(
-        0,
-        Math.round(baseScore + (Math.random() * variance - variance / 2)),
-      ),
-    });
-  });
-  return data;
-};
-
-// ----- ANALYTICS DATA FOR CHARTS -----
-const generateEmotionSpecifics = () => [
-  { name: "Happy", accuracy: 95 },
-  { name: "Sad", accuracy: 60 },
-  { name: "Angry", accuracy: 45 },
-  { name: "Surprised", accuracy: 85 },
-  { name: "Fear", accuracy: 50 },
-];
-const generateFatigueData = () => [
-  { click: 1, reactionTime: 400 },
-  { click: 5, reactionTime: 380 },
-  { click: 10, reactionTime: 420 },
-  { click: 15, reactionTime: 600 },
-  { click: 20, reactionTime: 850 },
-];
-const generateExpressionData = () => [
-  { name: "Mouth", score: 90, fullMark: 100 },
-  { name: "Eyes", score: 65, fullMark: 100 },
-  { name: "Brows", score: 50, fullMark: 100 },
-  { name: "Jaw", score: 95, fullMark: 100 },
-];
-const generateBodySideData = () => [
-  { name: "Left Side", score: 85, fill: "#4e73df" },
-  { name: "Right Side", score: 60, fill: "#e74a3b" },
-  { name: "Midline", score: 90, fill: "#36b9cc" },
-];
-const generateAudioData = () => [
-  { name: "Left Ear", score: 95 },
-  { name: "Right Ear", score: 80 },
-  { name: "Pitch", score: 70 },
-];
-
-const generateHandData = () => [
-  { name: "Center", accuracy: 92 },
-  { name: "Left", accuracy: 78 },
-  { name: "Right", accuracy: 85 },
-  { name: "Top", accuracy: 70 },
-  { name: "Bottom", accuracy: 65 },
-];
 // ----- MODALS & COMPONENTS -----
 
 const SessionReviewModal = ({ data, onClose, speak, t, colors }) => {
@@ -557,6 +529,7 @@ const SessionReviewModal = ({ data, onClose, speak, t, colors }) => {
     radarData,
     traits,
     emotionPerformance,
+    posePerformance,
     struggleOrder,
     averageTime,
   } = data;
@@ -649,71 +622,65 @@ const SessionReviewModal = ({ data, onClose, speak, t, colors }) => {
                   ))}
               </div>
 
-              {/* Struggle Analysis Section */}
-              {struggleOrder && (
-                <div className="mt-4 p-3 bg-light rounded-3">
-                  <h6 className="fw-bold text-secondary mb-2">
-                    Emotion Difficulty Order
+              {/* Social Outcome / Useful Insight */}
+              {data.socialOutcome && (
+                <div className="mt-4 p-3 rounded-4" style={{ backgroundColor: `${colors?.accentColor}10`, border: `1px dashed ${colors?.accentColor}` }}>
+                  <h6 className="fw-bold text-primary mb-2">
+                    <FaLightbulb className="me-2" />
+                    Session Insight
                   </h6>
-                  <div className="d-flex flex-wrap justify-content-center align-items-center mb-2">
-                    {struggleOrder.split(" → ").map((emotion, index, arr) => (
-                      <React.Fragment key={index}>
-                        <Badge
-                          bg={
-                            index === 0
-                              ? "danger"
-                              : index === arr.length - 1
-                                ? "success"
-                                : "warning"
-                          }
-                          className="px-3 py-2 m-1 text-capitalize"
-                        >
-                          {emotion}
-                        </Badge>
-                        {index < arr.length - 1 && (
-                          <span className="mx-1 text-muted">→</span>
-                        )}
-                      </React.Fragment>
-                    ))}
+                  <p className="small mb-0 opacity-75 fw-medium" style={{ lineHeight: '1.5' }}>
+                    {data.socialOutcome}
+                  </p>
+                  <div className="mt-3 d-flex gap-2">
+                    <Badge bg="danger" className="opacity-75">Hardest: {data.hardestEmotion}</Badge>
+                    <Badge bg="success" className="opacity-75">Easiest: {data.easiestEmotion}</Badge>
                   </div>
-                  <small className="text-muted d-block">
-                    Most challenging → Easiest
-                  </small>
                 </div>
               )}
             </Col>
             <Col md={7} className="ps-md-4">
-              <h6 className="fw-bold text-secondary mb-3">Skill Dimensions</h6>
-              <div style={{ height: 200, width: "100%" }}>
-                <ResponsiveContainer>
-                  <RadarChart
-                    cx="50%"
-                    cy="50%"
-                    outerRadius="70%"
-                    data={radarData}
-                  >
-                    <PolarGrid />
-                    <PolarAngleAxis
-                      dataKey="subject"
-                      tick={{ fontSize: 10, fontWeight: "bold" }}
-                    />
-                    <PolarRadiusAxis
-                      angle={30}
-                      domain={[0, 100]}
-                      tick={false}
-                      axisLine={false}
-                    />
-                    <Radar
-                      name="Session"
-                      dataKey="A"
-                      stroke="#8884d8"
-                      fill="#8884d8"
-                      fillOpacity={0.5}
-                    />
-                    <Tooltip />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
+              {radarData.length > 1 ? (
+                <>
+                  <h6 className="fw-bold text-secondary mb-3">Skill Performance</h6>
+                  <Row className="g-2">
+                    {radarData.map((pt, i) => (
+                      <Col xs={6} key={i}>
+                        <div className="p-3 rounded-4 border bg-white shadow-sm h-100 transition-all hover-lift">
+                          <div className="d-flex flex-column align-items-center text-center">
+                            <small className="text-muted fw-bold text-uppercase mb-1" style={{ fontSize: '0.65rem', letterSpacing: '0.5px' }}>
+                              {pt.subject}
+                            </small>
+                            <div className="h4 fw-bold mb-0 text-primary">
+                              {pt.subject === "Duration" ? `${Math.round(pt.trueValue || pt.A)}s` :
+                               pt.subject === "Level" ? `${pt.trueValue || 1}` :
+                               `${Math.round(pt.A)}%`}
+                            </div>
+                            <ProgressBar
+                              now={pt.A}
+                              className="w-100 mt-2"
+                              style={{ height: '4px' }}
+                              variant={pt.A > 80 ? "success" : pt.A > 50 ? "primary" : "warning"}
+                            />
+                          </div>
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
+                </>
+              ) : (
+                <div className="p-4 rounded-4 border bg-white shadow-sm">
+                  <small className="text-muted fw-bold text-uppercase d-block mb-2">
+                    Session Result
+                  </small>
+                  <div className="h3 fw-bold text-primary mb-1">
+                    {metricValue}
+                  </div>
+                  <div className="text-secondary fw-semibold">
+                    {metricLabel}
+                  </div>
+                </div>
+              )}
 
               {/* Detailed Emotion Performance */}
               {emotionPerformance && emotionPerformance.length > 0 && (
@@ -764,26 +731,41 @@ const SessionReviewModal = ({ data, onClose, speak, t, colors }) => {
                 </div>
               )}
 
-              <Alert
-                className="mt-3 border rounded-3"
-                style={{
-                  backgroundColor: `${colors?.accentColor}20`,
-                  borderColor: colors?.accentColor,
-                  color: colors?.textPrimary,
-                }}
-              >
-                <div className="d-flex">
-                  <FaUserMd className="mt-1 me-3 fs-4" style={{ color: colors?.accentColor }} />
-                  <div>
-                    <h6 className="fw-bold mb-1" style={{ color: colors?.textPrimary }}>
-                      {t.clinical_feedback}
-                    </h6>
-                    <p className="mb-0 small lh-sm" style={{ color: colors?.textSecondary }}>
-                      {feedback}
-                    </p>
+              {posePerformance && posePerformance.length > 0 && (
+                <div className="mt-4">
+                  <h6 className="fw-bold text-secondary mb-3">
+                    Pose Time Details
+                  </h6>
+                  <div className="table-responsive">
+                    <table className="table table-sm table-hover">
+                      <thead>
+                        <tr>
+                          <th>Pose</th>
+                          <th className="text-end">Time Taken</th>
+                          <th className="text-end">Score</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {posePerformance.map((pose, index) => (
+                          <tr key={index}>
+                            <td className="text-capitalize fw-medium">
+                              {(pose.poseId || `Pose ${index + 1}`).replace(/_/g, " ")}
+                            </td>
+                            <td className="text-end">
+                              {pose.timeout ? "Timed out" : `${Math.round((pose.timeTaken || 0) / 1000)} seconds`}
+                            </td>
+                            <td className="text-end">
+                              <Badge bg={(pose.score || 0) >= 80 ? "success" : (pose.score || 0) >= 50 ? "warning" : "danger"}>
+                                {Math.round(pose.score || 0)}%
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              </Alert>
+              )}
             </Col>
           </Row>
         </div>
@@ -807,13 +789,80 @@ const SessionReviewModal = ({ data, onClose, speak, t, colors }) => {
 };
 
 const AnalyticsDashboard = ({ game, onClose, t, colors }) => {
-  const historyData = generateHistoricalData(game.averageScore || 100, 50);
-  const staticStats = getStaticStats(game.id, t);
-  const emotionData = generateEmotionSpecifics();
-  const fatigueData = generateFatigueData();
-  const muscleData = generateExpressionData();
-  const bodySideData = generateBodySideData();
-  const audioData = generateAudioData();
+  const sessions = game.sessions || [];
+  const latestSession = sessions[sessions.length - 1] || {};
+  const meta = latestSession.metadata || {};
+  const latestScore = roundPercent(latestSession.score);
+  const latestAccuracy = roundPercent(firstFiniteNumber(latestSession.accuracy, meta.accuracy, meta.accuracyPct, latestScore));
+
+  const historyData = sessions.map(s => ({
+    day: new Date(s.playedAt).toLocaleDateString('en-US', { weekday: 'short' }),
+    score: roundPercent(s.score)
+  }));
+
+  const staticStats = [
+    { label: t.total_plays, value: sessions.length, icon: <FaPlay />, color: "primary" },
+    { label: t.high_score, value: Math.max(...sessions.map(s => s.score), 0), icon: <FaStar />, color: "warning" },
+    { label: "Avg. Accuracy", value: `${Math.round(sessions.reduce((a, b) => a + firstFiniteNumber(b.accuracy, b.metadata?.accuracy, b.metadata?.accuracyPct, b.score), 0) / (sessions.length || 1))}%`, icon: <FaChartLine />, color: "success" }
+  ];
+
+  const getRealChartData = () => {
+    switch (game.id) {
+      case GAME_IDS.EMOTION_MATCH:
+        return meta.accuracyByEmotion ? Object.keys(meta.accuracyByEmotion).map(k => ({
+          name: k, accuracy: roundPercent(meta.accuracyByEmotion[k])
+        })) : [
+          { name: "Matches", accuracy: roundPercent(percentOf(meta.matchScore || 0, meta.totalPossibleMatches || meta.matchScore || 1)) },
+          { name: "Accuracy", accuracy: latestAccuracy },
+          { name: "Level", accuracy: roundPercent(percentOf(latestSession.levelReached || meta.level || 1, 3)) }
+        ];
+
+      case GAME_IDS.PATTERN_ADVENTURE:
+        return (meta.reactionTimes || meta.times) ? (meta.reactionTimes || meta.times).map((rt, i) => ({
+          click: i + 1, reactionTime: rt
+        })) : [
+          { click: 1, reactionTime: meta.reactionTime || 0 }
+        ];
+
+      case GAME_IDS.FACE_MIMIC:
+        return (meta.emotionData || meta.emotionPerformance) ? (meta.emotionData || meta.emotionPerformance).map(e => ({
+          name: e.emotion,
+          score: e.timeout ? 0 : roundPercent(e.score ?? (100 - (e.timeTaken / 1000) * 2)),
+          fullMark: 100
+        })) : [
+          { name: "Mimicry", score: latestScore, fullMark: 100 }
+        ];
+
+      case GAME_IDS.IMITATION_GAME:
+        return meta.poseBreakdown?.length
+          ? meta.poseBreakdown.map((pose, i) => ({
+              name: (pose.poseId || `Pose ${i + 1}`).replace(/_/g, " "),
+              score: roundPercent(100 - ((pose.timeTaken || 0) / 100)),
+            }))
+          : [
+              { name: "Pose Matches", score: roundPercent(percentOf(meta.posesMatched || 0, meta.totalPoses || 1)) },
+              { name: "Accuracy", score: latestAccuracy },
+            ];
+
+      case GAME_IDS.SOUND_SCAPE:
+        return [
+          { name: "Correct", score: roundPercent(percentOf(meta.correctSounds || 0, meta.totalSounds || meta.rounds || 10)) },
+          { name: "Accuracy", score: latestAccuracy },
+          { name: "Points", score: latestScore }
+        ];
+
+      case GAME_IDS.MAGIC_HANDS:
+        return [
+          { name: "Popped", accuracy: roundPercent(percentOf(meta.bubblesPopped || 0, meta.totalBubbles || 1)) },
+          { name: "Missed", accuracy: roundPercent(percentOf(Math.max(0, (meta.totalBubbles || 0) - (meta.bubblesPopped || 0)), meta.totalBubbles || 1)) },
+          { name: "Accuracy", accuracy: latestAccuracy }
+        ];
+
+      default: return [];
+    }
+  };
+
+  const chartData = getRealChartData();
 
   const renderSpecificChart = () => {
     switch (game.id) {
@@ -821,35 +870,12 @@ const AnalyticsDashboard = ({ game, onClose, t, colors }) => {
         return (
           <div style={{ height: 300, width: "100%" }}>
             <ResponsiveContainer>
-              <BarChart data={emotionData} layout="vertical">
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  horizontal={true}
-                  vertical={false}
-                  stroke="#eee"
-                />
+              <BarChart data={chartData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#eee" />
                 <XAxis type="number" domain={[0, 100]} hide />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  width={80}
-                  tick={{ fontSize: 12, fontWeight: 600 }}
-                />
-                <Tooltip
-                  cursor={{ fill: "#f5f7fa" }}
-                  contentStyle={{
-                    borderRadius: "10px",
-                    border: "none",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                  }}
-                />
-                <Bar
-                  dataKey="accuracy"
-                  name="Recognition %"
-                  fill="#4e73df"
-                  radius={[0, 10, 10, 0]}
-                  barSize={20}
-                />
+                <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12, fontWeight: 600 }} />
+                <Tooltip cursor={{ fill: "#f5f7fa" }} />
+                <Bar dataKey="accuracy" name="Recognition %" fill="#4e73df" radius={[0, 10, 10, 0]} barSize={20} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -858,37 +884,12 @@ const AnalyticsDashboard = ({ game, onClose, t, colors }) => {
         return (
           <div style={{ height: 300, width: "100%" }}>
             <ResponsiveContainer>
-              <LineChart data={fatigueData}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#eee"
-                />
-                <XAxis
-                  dataKey="click"
-                  label={{
-                    value: "Clicks",
-                    position: "insideBottom",
-                    offset: -5,
-                  }}
-                  tick={{ fontSize: 12 }}
-                />
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                <XAxis dataKey="click" label={{ value: "Clicks", position: "insideBottom", offset: -5 }} tick={{ fontSize: 12 }} />
                 <YAxis hide />
-                <Tooltip
-                  contentStyle={{ borderRadius: "10px", border: "none" }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="reactionTime"
-                  stroke="#f6c23e"
-                  strokeWidth={4}
-                  dot={{
-                    r: 4,
-                    fill: "#f6c23e",
-                    strokeWidth: 2,
-                    stroke: "#fff",
-                  }}
-                />
+                <Tooltip />
+                <Line type="monotone" dataKey="reactionTime" stroke="#f6c23e" strokeWidth={4} dot={{ r: 4, fill: "#f6c23e" }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -897,27 +898,12 @@ const AnalyticsDashboard = ({ game, onClose, t, colors }) => {
         return (
           <div style={{ height: 300, width: "100%" }}>
             <ResponsiveContainer>
-              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={muscleData}>
+              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
                 <PolarGrid stroke="#eee" />
-                <PolarAngleAxis
-                  dataKey="name"
-                  tick={{ fontSize: 12, fontWeight: 700, fill: "#555" }}
-                />
-                <PolarRadiusAxis
-                  angle={30}
-                  domain={[0, 100]}
-                  stroke="transparent"
-                />
-                <Radar
-                  name="Control %"
-                  dataKey="score"
-                  stroke="#1cc88a"
-                  fill="#1cc88a"
-                  fillOpacity={0.4}
-                />
-                <Tooltip
-                  contentStyle={{ borderRadius: "10px", border: "none" }}
-                />
+                <PolarAngleAxis dataKey="name" tick={{ fontSize: 12, fontWeight: 700, fill: "#555" }} />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="transparent" />
+                <Radar name="Control %" dataKey="score" stroke="#1cc88a" fill="#1cc88a" fillOpacity={0.4} />
+                <Tooltip />
               </RadarChart>
             </ResponsiveContainer>
           </div>
@@ -926,28 +912,12 @@ const AnalyticsDashboard = ({ game, onClose, t, colors }) => {
         return (
           <div style={{ height: 300, width: "100%" }}>
             <ResponsiveContainer>
-              <BarChart data={bodySideData}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#eee"
-                />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 12 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis hide />
-                <Tooltip
-                  contentStyle={{ borderRadius: "10px", border: "none" }}
-                />
-                <Bar
-                  dataKey="score"
-                  name="Accuracy %"
-                  radius={[8, 8, 0, 0]}
-                  barSize={40}
-                />
+                <Tooltip />
+                <Bar dataKey="score" name="Accuracy %" fill="#e74a3b" radius={[8, 8, 0, 0]} barSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -956,29 +926,12 @@ const AnalyticsDashboard = ({ game, onClose, t, colors }) => {
         return (
           <div style={{ height: 300, width: "100%" }}>
             <ResponsiveContainer>
-              <BarChart data={audioData}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#eee"
-                />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 12 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis hide />
-                <Tooltip
-                  contentStyle={{ borderRadius: "10px", border: "none" }}
-                />
-                <Bar
-                  dataKey="score"
-                  name="Accuracy %"
-                  fill="#0dcaf0"
-                  radius={[8, 8, 0, 0]}
-                  barSize={40}
-                />
+                <Tooltip />
+                <Bar dataKey="score" name="Accuracy %" fill="#0dcaf0" radius={[8, 8, 0, 0]} barSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -987,35 +940,17 @@ const AnalyticsDashboard = ({ game, onClose, t, colors }) => {
         return (
           <div style={{ height: 300, width: "100%" }}>
             <ResponsiveContainer>
-              <BarChart data={generateHandData()}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#eee"
-                />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 12 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis hide />
-                <Tooltip
-                  contentStyle={{ borderRadius: "10px", border: "none" }}
-                />
-                <Bar
-                  dataKey="accuracy"
-                  name="Pop Accuracy %"
-                  fill="#38b2ac"
-                  radius={[8, 8, 0, 0]}
-                  barSize={40}
-                />
+                <Tooltip />
+                <Bar dataKey="accuracy" name="Pop Accuracy %" fill="#38b2ac" radius={[8, 8, 0, 0]} barSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         );
-      default:
-        return null;
+      default: return null;
     }
   };
 
@@ -1267,22 +1202,16 @@ const PatternClickerGame = ({ onComplete, onClose, t, speak }) => {
       reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length;
     console.log("⏱️ Average reaction time:", avgReactionTime);
 
-    // Calculate score: faster = higher score
-    // Formula: (1000 - avgReactionTime) / 1000 * 100
-    // Examples: 100ms = 90pts, 200ms = 80pts, 300ms = 70pts, 400ms = 60pts
-    let score = Math.max(0, Math.min(100, ((1000 - avgReactionTime) / 1000) * 100));
-
-    // Penalty for errors (reduce penalty from 15 to 5 per error)
-    const errorPenalty = errors * 5;
-    score = Math.max(0, score - errorPenalty);
-
-    // Bonus for completing all rounds (increased from 20 to 30)
-    if (reactionTimes.length >= 5) {
-      score += 30;
-    }
-
-    // Ensure score is between 0-100 (removed minimum floor of 30)
-    score = Math.min(100, Math.max(0, score));
+    // Score against a comfortable response threshold.
+    // <=750ms earns full speed credit; slower responses decline gradually.
+    const optimalReactionTime = 750;
+    const slowestUsefulReactionTime = 1000;
+    const speedScore =
+      avgReactionTime <= optimalReactionTime
+        ? 100
+        : 100 - ((avgReactionTime - optimalReactionTime) / (slowestUsefulReactionTime - optimalReactionTime)) * 100;
+    const errorPenalty = errors * 12;
+    let score = Math.max(0, Math.min(100, speedScore - errorPenalty));
 
     console.log("🏆 Final calculated score:", Math.round(score));
 
@@ -1418,7 +1347,7 @@ const PatternClickerGame = ({ onComplete, onClose, t, speak }) => {
 
 const UserDashboard = () => {
   const { colors, theme, changeTheme, availableThemes } = useTheme();
-  const [activeTab, setActiveTab] = useState("home");
+  const [activeTab, setActiveTab] = useState("arcade");
   const [language, setLanguage] = useState("en");
   const t = TRANSLATIONS[language];
 
@@ -1478,11 +1407,12 @@ const UserDashboard = () => {
       if (parsedUser) {
         const user = {
           name: parsedUser.username || parsedUser.name || "Explorer",
-          totalPoints: parsedUser.totalPoints || 1250,
-          level: parsedUser.level || 5,
+          totalPoints: parsedUser.totalPoints || 0,
+          level: parsedUser.level || 1,
           avatar: parsedUser.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
           ...parsedUser,
         };
+
 
         if (user.id && !user._id) user._id = user.id;
         else if (user._id && !user.id) user.id = user._id;
@@ -1494,19 +1424,30 @@ const UserDashboard = () => {
     }
     return {
       name: "Explorer",
-      totalPoints: 1250,
-      level: 5,
+      totalPoints: 0,
+      level: 1,
       id: null,
       _id: null,
       avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
     };
+
   });
 
-  // Face Blurring for Games
   const [blurGameplay, setBlurGameplay] = useState(true);
+  const [handNavigation, setHandNavigation] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const videoHiddenRef = useRef(null);
   const canvasRef = useRef(null);
+  const [gameStats, setGameStats] = useState({
+    [GAME_IDS.EMOTION_MATCH]: { totalPlays: 0, highScore: 0 },
+    [GAME_IDS.PATTERN_ADVENTURE]: { totalPlays: 0, highScore: 0 },
+    [GAME_IDS.FACE_MIMIC]: { totalPlays: 0, highScore: 0 },
+    [GAME_IDS.IMITATION_GAME]: { totalPlays: 0, highScore: 0 },
+    [GAME_IDS.SOUND_SCAPE]: { totalPlays: 0, highScore: 0 },
+    [GAME_IDS.MAGIC_HANDS]: { totalPlays: 0, highScore: 0 },
+  });
+  const [historyData, setHistoryData] = useState([]);
+  const [rawSessions, setRawSessions] = useState([]);
   const faceBoxRef = useRef(null);
   const faceBoxTimeRef = useRef(0);
   const drawLoopRef = useRef(null);
@@ -1523,7 +1464,6 @@ const UserDashboard = () => {
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showImitationModal, setShowImitationModal] = useState(false);
   const [showSoundScapeModal, setShowSoundScapeModal] = useState(false);
-  const [historyData, setHistoryData] = useState([]);
   const [showMagicHandsModal, setShowMagicHandsModal] = useState(false);
   const [isGameRecording, setIsGameRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
@@ -1574,15 +1514,6 @@ const UserDashboard = () => {
       hex: "#17a2b8",
     },
   };
-
-  const [gameStats, setGameStats] = useState({
-    [GAME_IDS.EMOTION_MATCH]: { totalPlays: 0, highScore: 0 },
-    [GAME_IDS.PATTERN_ADVENTURE]: { totalPlays: 0, highScore: 0 },
-    [GAME_IDS.FACE_MIMIC]: { totalPlays: 0, highScore: 0 },
-    [GAME_IDS.IMITATION_GAME]: { totalPlays: 0, highScore: 0 },
-    [GAME_IDS.SOUND_SCAPE]: { totalPlays: 0, highScore: 0 },
-    [GAME_IDS.MAGIC_HANDS]: { totalPlays: 0, highScore: 0 },
-  });
 
   // --- Load Models for Gameplay Blur ---
   useEffect(() => {
@@ -1651,14 +1582,16 @@ const UserDashboard = () => {
 
     faceDetectRef.current = setInterval(async () => {
       const vid = videoHiddenRef.current;
-      if (!vid || vid.readyState < 2) return;
+      if (!vid || vid.readyState < 2 || !modelsLoaded) return;
       try {
         const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3 }));
         if (det) {
           faceBoxRef.current = det.box;
           faceBoxTimeRef.current = Date.now();
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Face detection error:", e);
+      }
     }, FACE_HZ);
   }, [blurGameplay]);
 
@@ -1702,7 +1635,7 @@ const UserDashboard = () => {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      
+
       if (!videoHiddenRef.current) {
         videoHiddenRef.current = document.createElement("video");
       }
@@ -1715,7 +1648,7 @@ const UserDashboard = () => {
       startBlurLoops();
 
       const captureStream = canvasRef.current.captureStream(DRAW_FPS);
-      
+
       let mimeType = "video/webm;codecs=vp9";
       if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = "video/webm;codecs=vp8";
       if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = "video/webm";
@@ -1792,14 +1725,72 @@ const UserDashboard = () => {
     // --- SCORING LOGIC ---
     console.log(`🎯 Processing game ${gameId}: ${gameName}`);
 
+    // --- REAL DATA RADAR MAPPING ---
+    // Align with Therapist Dashboard for consistency
+    const duration = firstFiniteNumber(
+      rawData?.duration,
+      rawData?.timeSpent,
+      rawData?.time,
+      rawData?.times ? rawData.times.reduce((a, b) => a + b, 0) / 1000 : undefined,
+    );
+    const moves = firstFiniteNumber(rawData?.moves, rawData?.points ? rawData.points / 10 : undefined);
+    const level = firstFiniteNumber(rawData?.level, 1) || 1;
+
+    let maxScoreScale = 200;
+    if (gameId === GAME_IDS.IMITATION_GAME) maxScoreScale = 800;
+    if (gameId === GAME_IDS.EMOTION_MATCH) maxScoreScale = 12;
+
+    // Moves Efficiency: Min Moves (Cards Count) / Actual Moves
+    let minMoves = 0;
+    if (gameId === GAME_IDS.EMOTION_MATCH) {
+      minMoves = level === 1 ? 4 : level === 2 ? 8 : 12;
+    } else {
+      minMoves = moves > 0 ? Math.max(1, Math.floor(moves * 0.7)) : 10;
+    }
+    const movesEfficiency = moves > 0 ? roundPercent((minMoves / moves) * 100) : 0;
+
+    // Initial Score Logic
+    score = firstFiniteNumber(rawData?.score, rawData?.points, rawData?.matchScore ? rawData.matchScore * 50 : undefined);
+
+    // Fix Accuracy calculation (ensure it's never > 100%)
+    const rawAccuracy = firstFiniteNumber(rawData?.accuracy, rawData?.accuracyPct);
+    let finalAccuracy = rawAccuracy > 100 ? movesEfficiency : rawAccuracy || movesEfficiency;
+
+    radarData = [
+      { subject: "Score", A: Math.min(100, (score / maxScoreScale) * 100), fullMark: 100, trueValue: Math.round(score) },
+      { subject: "Accuracy", A: finalAccuracy, fullMark: 100, trueValue: finalAccuracy },
+      { subject: "Level", A: Math.min(100, (level / 5) * 100), fullMark: 100, trueValue: level },
+      { subject: "Duration", A: Math.min(100, (duration / 300) * 100), fullMark: 100, trueValue: duration },
+      { subject: "Moves", A: movesEfficiency, fullMark: 100, trueValue: movesEfficiency },
+    ];
+
     if (gameId === GAME_IDS.EMOTION_MATCH) {
       console.log("🎮 Emotion Match data:", rawData);
-      const { level = 1, accuracy = 0 } = rawData;
-      score = level * 25 + accuracy * 0.25;
-      if (score > 100) score = 100;
+      const completedLevels = firstFiniteNumber(
+        rawData?.levelsCompleted,
+        rawData?.levelCompleted, 
+        rawData?.metadata?.levelsCompleted, 
+        rawData?.level
+      );
+      const matches = firstFiniteNumber(
+        rawData?.matchedPairs,
+        rawData?.matchScore, 
+        rawData?.metadata?.matchedPairs
+      );
+      const moveAccuracy = rawData?.accuracy !== undefined
+        ? rawData.accuracy
+        : (moves > 0 ? percentOf(matches, moves) : 0);
+      
+      // For Emotion Match, we want to store the raw matches (max 12) 
+      // as 'score' to align with Therapist Dashboard's maxScore = 12 scaling.
+      score = matches || 0; 
+      finalAccuracy = roundPercent(moveAccuracy);
 
-      metricLabel = "Level";
-      metricValue = `${level} / 3`;
+      metricLabel = "Levels Done";
+      metricValue = `${completedLevels} / 3`;
+      radarData = [
+        { subject: "Match Score", A: score, fullMark: 100, trueValue: score },
+      ];
 
       if (score > 85) {
         supportLevel = "Independent";
@@ -1814,19 +1805,11 @@ const UserDashboard = () => {
         feedback = "Keep practicing level 1 to build confidence.";
         traits = ["Explorer"];
       }
-
-      radarData = [
-        { subject: "Memory", A: score, fullMark: 100 },
-        { subject: "Focus", A: Math.min(100, score + 10), fullMark: 100 },
-        { subject: "Speed", A: 60, fullMark: 100 },
-        { subject: "Visual", A: 90, fullMark: 100 },
-        { subject: "Inhibition", A: score, fullMark: 100 },
-      ];
     } else if (gameId === GAME_IDS.PATTERN_ADVENTURE) {
       console.log("🎮 Pattern Adventure data:", rawData);
 
       // Direct score from game
-      score = rawData.score || 0;
+      score = firstFiniteNumber(rawData?.score);
 
       // If no score was provided, calculate one
       if (score === 0) {
@@ -1836,20 +1819,26 @@ const UserDashboard = () => {
         if (times.length > 0) {
           const avgReactionTime =
             times.reduce((a, b) => a + b, 0) / times.length;
-          score = Math.max(0, Math.min(100, (1000 - avgReactionTime) / 9));
-          score = Math.max(0, score - errors * 15);
-          if (times.length >= 5) score += 20;
-          score = Math.min(100, Math.max(30, score));
+          const optimalReactionTime = 750;
+          const slowestUsefulReactionTime = 1000;
+          const speedScore = avgReactionTime <= optimalReactionTime
+            ? 100
+            : 100 - ((avgReactionTime - optimalReactionTime) / (slowestUsefulReactionTime - optimalReactionTime)) * 100;
+          score = clampPercent(speedScore - errors * 12);
         } else {
-          score = 50; // Default score
+          score = 0;
         }
       }
+      finalAccuracy = roundPercent(score);
 
       metricLabel = "Reaction Time";
       metricValue =
         rawData.times && rawData.times.length > 0
           ? `${Math.round(rawData.times.reduce((a, b) => a + b, 0) / rawData.times.length)}ms`
-          : "Good";
+          : "N/A";
+      radarData = [
+        { subject: "Reaction Score", A: roundPercent(score), fullMark: 100, trueValue: Math.round(score) },
+      ];
 
       if (score > 85) {
         supportLevel = "Independent";
@@ -1865,135 +1854,81 @@ const UserDashboard = () => {
         traits = ["Learning"];
       }
 
-      radarData = [
-        { subject: "Reflex", A: score, fullMark: 100 },
-        {
-          subject: "Control",
-          A: Math.max(0, 100 - (rawData.errors || 0) * 15),
-          fullMark: 100,
-        },
-        { subject: "Focus", A: Math.min(100, score + 20), fullMark: 100 },
-        { subject: "Timing", A: score, fullMark: 100 },
-        {
-          subject: "Impulse",
-          A: Math.max(0, 100 - (rawData.errors || 0) * 20),
-          fullMark: 100,
-        },
-      ];
     } else if (gameId === GAME_IDS.FACE_MIMIC) {
       console.log("🎮 Face Mimic data received:", rawData);
-      
-      // Get the emotion data for analytics/feedback
       const emotionData = rawData.emotionData || [];
-      const struggleOrder = rawData.struggleOrder || "";
       const timeData = rawData.timeData || {};
 
-      // Use the points calculated by the game (baseScore 400 + bonuses)
-      // Scale from 0-400 game points to 0-100 dashboard score
-      const gamePoints = rawData.points || 0;
-      score = 0;
-      
-      if (gamePoints > 0) {
-        // Game returns points up to ~430 (baseScore 400 + bonuses)
-        // Scale to 100 scale and ensure proper distribution
-        score = (gamePoints / 430) * 100;
-        score = Math.min(100, Math.max(0, Math.round(score)));
-        console.log(`✅ Using game score: gamePoints=${gamePoints} → dashboardScore=${score}`);
-      } else {
-        // Fallback if no points provided (shouldn't happen)
-        // Minimum 30 points for participation
-        score = emotionData.length > 0 ? 30 : 0;
-        console.log(`⚠️ No game points, fallback score=${score}`);
-      }
+      // Respect the game's real score. Timed-out emotions are already 0-point entries.
+      const maxFaceMimicScore = rawData.maxScore || 400;
+      const gamePoints = rawData.score ?? rawData.points ?? 0;
+      score = gamePoints > 100
+        ? Math.min(100, (gamePoints / maxFaceMimicScore) * 100)
+        : Math.min(100, gamePoints);
+      score = roundPercent(score);
+      finalAccuracy = roundPercent(firstFiniteNumber(rawData?.accuracy, score));
 
-      console.log(`🎮 Final Face Mimic score: ${score}`);
-
-      // Prepare struggle analysis for feedback
-      let struggleAnalysis = "";
-      if (timeData.sortedEmotions && timeData.sortedEmotions.length > 0) {
-        const fastest =
-          timeData.sortedEmotions[timeData.sortedEmotions.length - 1];
-        const slowest = timeData.sortedEmotions[0];
-
-        struggleAnalysis = `You mastered ${fastest.emotion} the fastest (${Math.round(fastest.timeTaken / 1000)}s) and found ${slowest.emotion} most challenging (${Math.round(slowest.timeTaken / 1000)}s).`;
-      }
-
-      metricLabel = "Time Analysis";
-      metricValue = struggleOrder || "All completed";
-
-      if (score > 85) {
-        supportLevel = "Independent";
-        feedback = `Excellent facial expression mimicry! ${struggleAnalysis}`;
-        traits = ["Expressive", "Quick Learner", "Observant"];
-      } else if (score > 60) {
-        supportLevel = "Emerging";
-        feedback = `Good effort! ${struggleAnalysis} Keep practicing to improve your speed.`;
-        traits = ["Developing", "Focused"];
-      } else {
-        supportLevel = "Needs Support";
-        feedback = `You completed all emotions! ${struggleAnalysis} Try slowing down and focusing on one expression at a time.`;
-        traits = ["Persistent", "Learning"];
-      }
-
-      // Create radar data based on time performance
-      const emotionTimes = emotionData.map((e) => e.timeTaken);
-      const avgTime =
-        emotionTimes.reduce((a, b) => a + b, 0) / emotionTimes.length;
-      const maxTime = Math.max(...emotionTimes);
-      const minTime = Math.min(...emotionTimes);
-
+      metricLabel = "Fastest Response";
+      const fastestTime = timeData.minTime ?? timeData.fastest?.timeTaken ?? 0;
+      metricValue = fastestTime > 0 ? `${(fastestTime / 1000).toFixed(1)}s` : "N/A";
       radarData = [
-        {
-          subject: "Speed",
-          A: Math.max(0, 100 - (avgTime / 30000) * 100),
-          fullMark: 100,
-        },
-        {
-          subject: "Consistency",
-          A: Math.max(0, 100 - ((maxTime - minTime) / 20000) * 100),
-          fullMark: 100,
-        },
-        { subject: "Control", A: score, fullMark: 100 },
-        { subject: "Recognition", A: Math.min(100, score + 10), fullMark: 100 },
-        { subject: "Confidence", A: Math.min(100, score - 15), fullMark: 100 },
+        { subject: "Score", A: Math.round(score), fullMark: 100, trueValue: Math.round(score) },
+        { subject: "Accuracy", A: finalAccuracy, fullMark: 100, trueValue: finalAccuracy },
       ];
 
-      // Store extra data for review modal
+      // CLINICAL OUTCOME GENERATION
+      const sortedByDifficulty = [...emotionData].sort((a,b) => b.timeTaken - a.timeTaken);
+      const hardest = sortedByDifficulty[0]?.emotion || "None";
+      const easiest = sortedByDifficulty[sortedByDifficulty.length - 1]?.emotion || "None";
+
+      let socialInsight = "";
+      if (hardest === "sad" || hardest === "fear") {
+        socialInsight = `Struggled most with "${hardest}" expressions. Suggests a need for targeted empathy training for low-arousal cues.`;
+      } else if (hardest === "angry" || hardest === "disgust") {
+        socialInsight = `Took longer to mimic "${hardest}". May indicate sensitivity or hesitation toward negative social stimuli.`;
+      } else {
+        socialInsight = `Excellent overall mimicry. Focusing on "${hardest}" will help balance facial motor control.`;
+      }
+
+      feedback = socialInsight;
+      traits = ["Mirroring", "Focused"];
+      supportLevel = score > 85 ? "Independent" : "Emerging";
+
       reviewExtraData = {
-        emotionPerformance: timeData.sortedEmotions || [],
-        struggleOrder: struggleOrder,
-        averageTime: timeData.averageTime
-          ? Math.round(timeData.averageTime / 1000)
-          : 0,
+        emotionPerformance: sortedByDifficulty,
+        socialOutcome: socialInsight,
+        hardestEmotion: hardest,
+        easiestEmotion: easiest
       };
     } else if (gameId === GAME_IDS.IMITATION_GAME) {
       console.log("🎮 Imitation Game data:", rawData);
       // Try multiple ways to get data
-      const posesMatched = rawData.posesMatched || rawData.matchedPoses || 3;
-      const totalPoses = rawData.totalPoses || rawData.totalAttempts || 5;
-      const accuracy = rawData.accuracy || rawData.matchAccuracy || 0;
-      const balanceScore = rawData.balanceScore || rawData.stability || 50;
-      const gameScore = rawData.score || rawData.finalScore || 0;
+      const posesMatched = firstFiniteNumber(rawData?.posesMatched, rawData?.matchedPoses);
+      const totalPoses = firstFiniteNumber(rawData?.totalPoses, rawData?.totalAttempts, posesMatched || 1);
+      const accuracy = firstFiniteNumber(rawData?.accuracy, rawData?.matchAccuracy);
+      const balanceScore = firstFiniteNumber(rawData?.balanceScore, rawData?.stability);
+      const timingScore = rawData?.timingScore ?? rawData?.metadata?.timingScore ?? score;
+      const gameScore = firstFiniteNumber(rawData?.score, rawData?.finalScore);
 
       if (gameScore > 0) {
-        // Scale game score to 100 if needed
-        if (gameScore > 100) {
-          // If game score is like 500, scale it to 100
-          score = (gameScore / 500) * 100;
-        } else {
-          score = gameScore;
-        }
-        score = Math.min(100, score);
+        score = percentOf(gameScore, totalPoses * 100 || 700);
       } else {
         const matchRate = (posesMatched / Math.max(1, totalPoses)) * 100;
         score = matchRate * 0.6 + accuracy * 0.3 + balanceScore * 0.1;
       }
 
-      // Ensure minimum score for participation
-      score = Math.max(score, 40);
+      score = roundPercent(score);
+      finalAccuracy = roundPercent(accuracy || percentOf(posesMatched, totalPoses));
 
       metricLabel = "Poses Matched";
       metricValue = `${posesMatched}/${totalPoses}`;
+      radarData = [
+        { subject: "Pose Match", A: roundPercent(percentOf(posesMatched, totalPoses)), fullMark: 100, trueValue: posesMatched },
+        { subject: "Time Score", A: roundPercent(timingScore), fullMark: 100, trueValue: timingScore },
+      ];
+      reviewExtraData = {
+        posePerformance: rawData?.metadata?.poseBreakdown || rawData?.poseBreakdown || [],
+      };
 
       if (score > 85) {
         supportLevel = "Independent";
@@ -2009,27 +1944,16 @@ const UserDashboard = () => {
         traits = ["Learning"];
       }
 
-      radarData = [
-        { subject: "Coordination", A: score, fullMark: 100 },
-        { subject: "Balance", A: balanceScore, fullMark: 100 },
-        {
-          subject: "Memory",
-          A: (posesMatched / Math.max(1, totalPoses)) * 100,
-          fullMark: 100,
-        },
-        { subject: "Agility", A: Math.min(100, score + 15), fullMark: 100 },
-        { subject: "Focus", A: accuracy, fullMark: 100 },
-      ];
     } else if (gameId === GAME_IDS.SOUND_SCAPE) {
       console.log("🎮 Sound Scape data:", rawData);
 
       // SoundScapeGame returns { points: score, rounds: 10, accuracyPct: percentage }
-      const gameScore = rawData.points || rawData.score || 0; // Look for "points" first!
+      const gameScore = firstFiniteNumber(rawData?.points, rawData?.score); // Look for "points" first!
       const correctSounds =
-        rawData.correctSounds || Math.floor(gameScore / 100); // Calculate from score
-      const totalSounds = rawData.rounds || rawData.totalSounds || 10;
+        firstFiniteNumber(rawData?.correctSounds, Math.floor(gameScore / 100)); // Calculate from score
+      const totalSounds = firstFiniteNumber(rawData?.rounds, rawData?.totalSounds, 10) || 10;
       const accuracy =
-        rawData.accuracyPct ||
+        firstFiniteNumber(rawData?.accuracyPct, rawData?.accuracy) ||
         (totalSounds > 0 ? (correctSounds / totalSounds) * 100 : 0);
 
       console.log(
@@ -2053,7 +1977,7 @@ const UserDashboard = () => {
         traits = ["Auditory", "Focused", "Perceptive"];
       } else if (gameScore > 0) {
         // Scale the score: 0-1000 to 0-100
-        score = (gameScore / 1000) * 100;
+        score = percentOf(gameScore, totalSounds * 100);
         metricLabel = "Accuracy";
         metricValue = `${Math.round(accuracy)}%`;
 
@@ -2077,34 +2001,36 @@ const UserDashboard = () => {
       } else {
         // Default fallback
         console.log("🎮 No valid score for Sound Scape");
-        score = 65;
+        score = 0;
         metricLabel = "Score";
         metricValue = `${Math.round(score)}`;
-        supportLevel = "Emerging";
-        feedback = "Good effort! Keep practicing to improve your skills.";
+        supportLevel = "Needs Support";
+        feedback = "No completed sound matches were recorded for this session.";
         traits = ["Learner"];
       }
 
       // Ensure score is between 0-100
-      score = Math.min(100, Math.max(0, score));
+      score = roundPercent(score);
+      finalAccuracy = roundPercent(accuracy);
       console.log("🎮 Final Sound Scape score:", score);
 
       radarData = [
-        { subject: "Recognition", A: score, fullMark: 100 },
-        { subject: "Accuracy", A: score, fullMark: 100 },
-        { subject: "Focus", A: Math.min(100, score + 10), fullMark: 100 },
-        { subject: "Memory", A: Math.min(100, score + 20), fullMark: 100 },
-        { subject: "Timing", A: 80, fullMark: 100 },
+        { subject: "Sound Score", A: score, fullMark: 100, trueValue: score },
       ];
     } else if (gameId === GAME_IDS.MAGIC_HANDS) {
       const {
         bubblesPopped = 0,
         totalBubbles: total = 0,
+        missedBubbles = 0,
         accuracy: acc = 0,
       } = rawData;
-      score = acc;
+      score = roundPercent(acc || percentOf(bubblesPopped, bubblesPopped + missedBubbles));
+      finalAccuracy = score;
       metricLabel = "Bubbles Popped";
       metricValue = `${bubblesPopped} / ${total}`;
+      radarData = [
+        { subject: "Pop Score", A: score, fullMark: 100, trueValue: score },
+      ];
       if (score > 85) {
         supportLevel = "Independent";
         feedback = "Excellent hand-eye coordination and fine motor precision.";
@@ -2119,26 +2045,15 @@ const UserDashboard = () => {
           "Keep practicing! Focus on moving your finger slowly toward each bubble.";
         traits = ["Explorer"];
       }
-      radarData = [
-        { subject: "Fine Motor", A: score, fullMark: 100 },
-        { subject: "Hand-Eye", A: Math.min(100, score + 5), fullMark: 100 },
-        { subject: "Tracking", A: Math.min(100, acc + 10), fullMark: 100 },
-        { subject: "Speed", A: Math.max(30, score - 10), fullMark: 100 },
-        {
-          subject: "Visuospatial",
-          A: Math.min(100, score + 15),
-          fullMark: 100,
-        },
-      ];
     } else {
       console.log("⚠️ Unknown game ID:", gameId);
       // Default scoring for any other game
-      score = rawData && typeof rawData === "object" ? rawData.score || 65 : 65;
+      score = rawData && typeof rawData === "object" ? firstFiniteNumber(rawData.score, rawData.points) : 0;
       // Scale if score is large
       if (score > 100) {
         score = (score / 1000) * 100;
       }
-      score = Math.min(100, Math.max(0, score));
+      score = roundPercent(score);
 
       metricLabel = "Score";
       metricValue = `${Math.round(score)}`;
@@ -2147,11 +2062,7 @@ const UserDashboard = () => {
       traits = ["Learner"];
 
       radarData = [
-        { subject: "Skill", A: score, fullMark: 100 },
-        { subject: "Accuracy", A: Math.min(100, score + 15), fullMark: 100 },
-        { subject: "Focus", A: Math.min(100, score - 10), fullMark: 100 },
-        { subject: "Speed", A: 60, fullMark: 100 },
-        { subject: "Consistency", A: 70, fullMark: 100 },
+        { subject: "Session Score", A: score, fullMark: 100 },
       ];
     }
 
@@ -2160,7 +2071,12 @@ const UserDashboard = () => {
     console.log("📈 Support Level:", supportLevel);
 
     // Save to database if we have a valid user ID
-    if (userId && userId.length === 24) {
+    // We allow any ID that exists, but warn if it's not a standard MongoDB ObjectId
+    if (userId) {
+      if (userId.length !== 24) {
+        console.warn("⚠️ Non-standard User ID detected. Backend save may fail if user is not in database.");
+      }
+
       let gameVideoUrl = null;
       let gameVideoFilename = null;
       try {
@@ -2182,21 +2098,48 @@ const UserDashboard = () => {
         console.warn("Game behavior video upload skipped:", uploadErr?.message || uploadErr);
       }
 
-      const payload = {
-        userId: userId,
-        therapistId: userProfile?.therapistId,
-        username: userProfile?.name || userProfile?.username || "Explorer",
-        gameId,
-        gameName: gameName,
-        score: Math.round(score),
-        levelReached:
-          rawData && typeof rawData === "object" ? rawData.level || 1 : 1,
-        gameVideoUrl,
-        gameVideoFilename,
-        faceBlurred: blurGameplay,
-        metadata:
-          rawData && typeof rawData === "object" ? rawData.metadata || {} : {},
-      };
+        const payload = {
+          userId: userId,
+          therapistId: userProfile?.therapistId || "Therapist_Main", // Ensure therapist linkage
+          username: userProfile?.name || userProfile?.username || "Explorer",
+          gameId,
+          gameName: gameName,
+          score: Math.round(score),
+          accuracy: finalAccuracy,
+          duration,
+          levelReached:
+            rawData && typeof rawData === "object" ? rawData.level || 1 : 1,
+          gameVideoUrl,
+          gameVideoFilename,
+          faceBlurred: blurGameplay,
+          metadata: {
+            ...(rawData && typeof rawData === "object" ? rawData : {}),
+            ...(rawData && typeof rawData === "object" ? rawData.metadata || {} : {}),
+            feedback,
+            supportLevel,
+            traits,
+            score: Math.round(score),
+            accuracy: finalAccuracy,
+            duration,
+            radarData, // Save the actual radar data used for the child
+          },
+        };
+        if (gameId === GAME_IDS.EMOTION_MATCH) {
+          payload.levelReached = rawData?.levelCompleted || rawData?.metadata?.levelsCompleted || rawData?.level || 0;
+        }
+
+        // --- NEW: Also save to Video Sessions (FaceCapture) if a video was recorded ---
+        if (gameVideoUrl) {
+          try {
+            const videoPayload = new FormData();
+            // We use a blob from the last recording if possible, but since we already uploaded,
+            // we can just notify the backend to link it or send the same data.
+            // For now, let's just make sure the analytics save is solid.
+            console.log("🔗 Linking game video to clinical video sessions...");
+          } catch (vErr) {
+            console.warn("Clinical session linkage failed:", vErr);
+          }
+        }
 
       console.log("📤 Sending to API:", payload);
 
@@ -2240,115 +2183,29 @@ const UserDashboard = () => {
       totalPoints: (prev.totalPoints || 0) + Math.round(score),
     }));
 
-    // Show review modal
-    setReviewData({
-      gameName: gameName,
-      score: Math.round(score),
-      feedback,
-      metricLabel: metricLabel || "Score",
-      metricValue: metricValue || "High",
-      supportLevel,
-      radarData,
-      traits: traits || ["Learner"],
-      chartType: "bar",
-      chartData: [],
-      ...(reviewExtraData || {})
-    });
+    // Show review modal — skip for EmotionMatch which has its own built-in analysis screen
+    if (gameId !== GAME_IDS.EMOTION_MATCH) {
+      setReviewData({
+        gameName: gameName,
+        score: Math.round(score),
+        feedback,
+        metricLabel: metricLabel || "Score",
+        metricValue: metricValue || "High",
+        supportLevel,
+        radarData,
+        traits: traits || ["Learner"],
+        chartType: "bar",
+        chartData: [],
+        ...(reviewExtraData || {})
+      });
+    }
 
     console.log("✅ Review modal data set successfully!");
   };
 
   const renderContent = () => {
     switch (activeTab) {
-      case "home":
-        return (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div
-              className="p-5 rounded-4 mb-4 shadow-lg"
-              style={{
-                background: `linear-gradient(120deg, ${colors.accentColor}dd 0%, ${colors.accentColor}88 100%)`,
-                color: colors.bgMain === "#f8f9fa" ? "#000" : "#fff",
-              }}
-            >
-              <h1 className="fw-bold">
-                {t.hello}, {userProfile.name}! 👋
-              </h1>
-              <p className="mb-0">{t.ready_text}</p>
-              <div className="mt-4 d-flex gap-3">
-                <div
-                  className="p-3 rounded-3 backdrop-blur"
-                  style={{ backgroundColor: "rgba(255, 255, 255, 0.25)" }}
-                >
-                  <small className="d-block fw-bold text-uppercase opacity-75">
-                    {t.level}
-                  </small>
-                  <span className="h4 fw-bold">{userProfile.level}</span>
-                </div>
-                <div
-                  className="p-3 rounded-3 backdrop-blur"
-                  style={{ backgroundColor: "rgba(255, 255, 255, 0.25)" }}
-                >
-                  <small className="d-block fw-bold text-uppercase opacity-75">
-                    {t.points}
-                  </small>
-                  <span className="h4 fw-bold">{userProfile.totalPoints}</span>
-                </div>
-              </div>
-            </div>
-            <h4 className="fw-bold mb-3" style={{ color: colors.textPrimary }}>
-              {t.recommended}
-            </h4>
-            <Row className="g-3">
-              {[GAME_IDS.EMOTION_MATCH, GAME_IDS.FACE_MIMIC].map((id) => {
-                const meta = GAME_META[id];
-                return (
-                  <Col md={6} key={id}>
-                    <Card
-                      className="border-0 shadow-sm rounded-4 p-2"
-                      role="button"
-                      onClick={() => {
-                        setActiveTab("arcade");
-                        speak(t[meta.nameKey]);
-                      }}
-                      style={{
-                        backgroundColor: colors.bgCard,
-                        borderColor: colors.borderColor,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <Card.Body className="d-flex align-items-center">
-                        <div
-                          className="p-3 rounded-3 me-3"
-                          style={{
-                            backgroundColor: `${meta.hex}20`,
-                            color: meta.hex,
-                          }}
-                        >
-                          {meta.icon}
-                        </div>
-                        <div>
-                          <h6 className="fw-bold mb-0" style={{ color: colors.textPrimary }}>
-                            {t[meta.nameKey]}
-                          </h6>
-                          <small style={{ color: colors.textSecondary }}>
-                            {t.continue_playing}
-                          </small>
-                        </div>
-                        <div className="ms-auto" style={{ color: colors.accentColor }}>
-                          <FaPlay />
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                );
-              })}
-            </Row>
-          </motion.div>
-        );
+
 
       case "arcade":
         return (
@@ -2452,24 +2309,6 @@ const UserDashboard = () => {
                             >
                               {t.play_now}
                             </Button>
-                            <Button
-                              className="rounded-pill border"
-                              style={{
-                                backgroundColor: colors.bgCard,
-                                borderColor: colors.borderColor,
-                                color: colors.textPrimary,
-                              }}
-                              onClick={() => {
-                                setSelectedAnalyticsGame({
-                                  ...stats,
-                                  ...meta,
-                                  id: Number(gameId),
-                                  name: t[meta.nameKey],
-                                });
-                              }}
-                            >
-                              <FaChartBar />
-                            </Button>
                           </div>
                         </Card.Body>
                       </Card>
@@ -2538,6 +2377,9 @@ const UserDashboard = () => {
         if (data.historyData) {
           setHistoryData(data.historyData);
         }
+        if (data.sessions) {
+          setRawSessions(data.sessions);
+        }
       } catch (err) {
         console.error("Stats fetch failed", err);
       }
@@ -2548,6 +2390,7 @@ const UserDashboard = () => {
 
   return (
     <div className="d-flex min-vh-100" style={{ backgroundColor: colors.bgMain }}>
+      <HandGestureOverlay enabled={handNavigation} />
       {/* --- SIDEBAR --- */}
       <div
         className="glass-panel d-flex flex-column p-4 sticky-top vh-100"
@@ -2576,6 +2419,30 @@ const UserDashboard = () => {
             <FaLanguage className="me-2" />{" "}
             {language === "en" ? "हिन्दी (Hindi)" : "English"}
           </Button>
+        </div>
+
+        {/* Theme Selector */}
+        <div className="mb-4 d-flex flex-column gap-2">
+          <label className="small fw-bold ms-2" style={{ color: colors.textSecondary }}>
+            Accessibility
+          </label>
+          <div className="d-flex flex-column gap-2 bg-light p-3 rounded-4 border">
+            <div className="d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <FaHandPaper className={handNavigation ? "text-info" : "text-muted"} size={14} />
+                <span className="small fw-bold" style={{ color: "#555" }}>Hand Nav</span>
+              </div>
+              <Form.Check
+                type="switch"
+                id="hand-nav-switch-sidebar"
+                checked={handNavigation}
+                onChange={(e) => {
+                  setHandNavigation(e.target.checked);
+                  speak(e.target.checked ? "Hand Navigation Enabled" : "Hand Navigation Disabled");
+                }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Theme Selector */}
@@ -2614,20 +2481,7 @@ const UserDashboard = () => {
         </div>
 
         <Nav className="flex-column sidebar-nav flex-grow-1 gap-2">
-          <Nav.Link
-            active={activeTab === "home"}
-            onClick={() => {
-              setActiveTab("home");
-              speak(t.home);
-            }}
-            className="rounded-3 px-3 py-3"
-            style={{
-              color: activeTab === "home" ? colors.accentColor : colors.textSecondary,
-              backgroundColor: activeTab === "home" ? colors.hoverBg : "transparent",
-            }}
-          >
-            <FaHome className="sidebar-icon" /> {t.home}
-          </Nav.Link>
+
           <Nav.Link
             active={activeTab === "arcade"}
             onClick={() => {

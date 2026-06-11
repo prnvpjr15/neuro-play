@@ -1,322 +1,312 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { AuthContext } from "./AuthContext";
+import { useTheme } from "./ThemeContext";
 import axios from "axios";
+import {
+  Card,
+  Row,
+  Col,
+  Badge,
+  Button,
+  Form,
+  Nav,
+  Tab,
+  Tabs,
+  ProgressBar,
+} from "react-bootstrap";
+import {
+  FaBrain,
+  FaUserMd,
+  FaSync,
+  FaFolder,
+  FaChartBar,
+  FaVideo,
+  FaGamepad,
+  FaHistory,
+  FaChevronLeft,
+  FaCog,
+  FaTimes,
+  FaPlay,
+  FaChartPie,
+} from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import { Link } from "react-router-dom";
+import {
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+} from "recharts";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
-  :root {
-    --bg:        #080b10;
-    --surf:      #0e1219;
-    --surf2:     #141922;
-    --surf3:     #1a2030;
-    --border:    rgba(255,255,255,0.06);
-    --border-h:  rgba(255,255,255,0.12);
-    --text:      #dde1ec;
-    --muted:     #5a6175;
-    --dim:       #8891a8;
-    --accent:    #38bdf8;
-    --accent-g:  rgba(56,189,248,0.15);
-    --green:     #34d399;
-    --green-g:   rgba(52,211,153,0.15);
-    --amber:     #fbbf24;
-    --amber-g:   rgba(251,191,36,0.15);
-    --red:       #f87171;
-    --red-g:     rgba(248,113,113,0.12);
-    --folder:    #c084fc;
-    --folder-g:  rgba(192,132,252,0.15);
-    --r:         12px;
-    --r-lg:      18px;
-  }
-
-  .tvd * { box-sizing: border-box; margin: 0; padding: 0; }
-  .tvd {
-    font-family: 'Sora', sans-serif;
-    background: var(--bg);
+  .tvd-wrapper { 
+    display: flex;
     min-height: 100vh;
-    color: var(--text);
-    padding: 28px 32px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    transition: all 0.3s ease;
+    background-attachment: fixed;
   }
 
-  /* ── Header ── */
-  .tvd-hdr {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
+  /* --- Sidebar --- */
+  .tvd-sidebar {
+    width: 280px;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(128,128,128,0.1);
+    z-index: 100;
+    backdrop-filter: blur(10px);
   }
-  .tvd-hdr-l { display: flex; align-items: center; gap: 14px; }
-  .tvd-icon-box {
-    width: 46px; height: 46px;
-    background: var(--accent-g);
-    border: 1px solid rgba(56,189,248,0.25);
-    border-radius: 11px;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--accent);
-  }
-  .tvd-title { font-size: 19px; font-weight: 600; letter-spacing: -0.4px; }
-  .tvd-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
-  .tvd-btn {
-    background: var(--surf2);
-    border: 1px solid var(--border);
-    color: var(--dim);
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 12.5px;
-    font-family: 'Sora', sans-serif;
-    cursor: pointer;
-    display: flex; align-items: center; gap: 7px;
-    transition: all 0.18s;
-  }
-  .tvd-btn:hover { background: var(--surf3); border-color: var(--border-h); color: var(--text); }
-
-  /* ── Stats row ── */
-  .tvd-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+  .tvd-logo-area {
+    display: flex;
+    align-items: center;
     gap: 12px;
-    margin-bottom: 26px;
+    margin-bottom: 2.5rem;
+    color: inherit;
   }
-  .tvd-stat {
-    background: var(--surf);
-    border: 1px solid var(--border);
-    border-radius: var(--r);
-    padding: 16px 18px;
-    transition: border-color 0.2s;
-  }
-  .tvd-stat:hover { border-color: var(--border-h); }
-  .tvd-stat-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 7px; }
-  .tvd-stat-val { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-  .tvd-stat-val.cyan   { color: var(--accent); }
-  .tvd-stat-val.green  { color: var(--green); }
-  .tvd-stat-val.amber  { color: var(--amber); }
-  .tvd-stat-val.purple { color: var(--folder); }
 
-  /* ── Breadcrumb ── */
-  .tvd-crumb {
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 18px;
-    font-size: 13px;
-    color: var(--muted);
+  .tvd-logo-icon {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, #4f8ed9, #6a11cb);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white !important;
+    box-shadow: 0 4px 15px rgba(79, 142, 217, 0.3);
   }
-  .tvd-crumb-link {
-    color: var(--accent);
+
+  .tvd-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0.85rem 1.25rem;
+    border-radius: 12px;
+    color: inherit;
+    text-decoration: none;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+    opacity: 0.7;
+    font-weight: 600;
     cursor: pointer;
-    background: none; border: none;
-    font-family: 'Sora', sans-serif;
-    font-size: 13px;
-    padding: 0;
-    transition: opacity 0.15s;
   }
-  .tvd-crumb-link:hover { opacity: 0.75; }
 
-  /* ── Folder grid ── */
-  .tvd-folder-grid {
+  .tvd-nav-item.active {
+    opacity: 1;
+    background: rgba(79, 142, 217, 0.15);
+    color: #4f8ed9 !important;
+    box-shadow: inset 0 0 0 1px rgba(79, 142, 217, 0.2);
+  }
+
+  .tvd-nav-item:hover:not(.active) {
+    opacity: 1;
+    background: rgba(128,128,128,0.08);
+  }
+
+  /* --- Main Content --- */
+  .tvd-main {
+    flex: 1;
+    padding: 2.5rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+    color: inherit;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: inherit;
+    /* Extra contrast for high-brightness themes */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+
+  .tvd-stat-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
   }
-  .tvd-folder-card {
-    background: var(--surf);
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
-    padding: 20px;
-    cursor: pointer;
-    transition: all 0.2s;
+
+  .tvd-stat-card {
+    padding: 1.5rem;
+    border-radius: 16px;
+    background: rgba(128,128,128,0.05);
+    border: 1px solid rgba(128,128,128,0.1);
     position: relative;
     overflow: hidden;
+    transition: transform 0.2s ease, background 0.3s;
+    color: inherit;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
   }
-  .tvd-folder-card::before {
+
+  .tvd-stat-card::before {
     content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg, var(--folder), transparent);
-    opacity: 0; transition: opacity 0.2s;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: var(--accent);
   }
-  .tvd-folder-card:hover { border-color: rgba(192,132,252,0.3); background: var(--surf2); transform: translateY(-2px); }
-  .tvd-folder-card:hover::before { opacity: 1; }
 
-  .tvd-folder-icon {
-    width: 48px; height: 48px;
-    background: var(--folder-g);
-    border: 1px solid rgba(192,132,252,0.2);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 14px; font-size: 22px;
+  .tvd-stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: inherit;
+    opacity: 0.6;
+    margin-bottom: 0.5rem;
   }
-  .tvd-folder-id {
-    font-size: 11px; font-weight: 500; color: var(--muted);
-    text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px;
-  }
-  .tvd-folder-username {
-    font-size: 13px; font-weight: 600; color: var(--text);
-    font-family: 'JetBrains Mono', monospace; margin-bottom: 6px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .tvd-folder-count { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
-  .tvd-folder-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-  .tvd-folder-date  { margin-top: 12px; font-size: 11px; color: var(--muted); }
 
-  /* ── Badge ── */
-  .tvd-badge {
-    display: inline-flex; align-items: center;
-    padding: 3px 9px; border-radius: 20px;
-    font-size: 11px; font-weight: 500;
-    font-family: 'JetBrains Mono', monospace;
+  .tvd-stat-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1;
+    color: inherit;
   }
-  .tvd-badge.green  { background: var(--green-g);  color: var(--green);  border: 1px solid rgba(52,211,153,0.22); }
-  .tvd-badge.amber  { background: var(--amber-g);  color: var(--amber);  border: 1px solid rgba(251,191,36,0.22); }
-  .tvd-badge.red    { background: var(--red-g);    color: var(--red);    border: 1px solid rgba(248,113,113,0.18); }
-  .tvd-badge.cyan   { background: var(--accent-g); color: var(--accent); border: 1px solid rgba(56,189,248,0.22); }
-  .tvd-badge.purple { background: var(--folder-g); color: var(--folder); border: 1px solid rgba(192,132,252,0.22); }
-  .tvd-badge.gray   { background: rgba(255,255,255,0.04); color: var(--muted); border: 1px solid var(--border); }
 
-  /* ── Session table ── */
-  .tvd-table-wrap {
-    background: var(--surf);
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
+  /* --- Table Styles --- */
+  .tvd-table-card {
+    background: rgba(128,128,128,0.03);
+    border-radius: 20px;
+    border: 1px solid rgba(128,128,128,0.1);
     overflow: hidden;
-  }
-  .tvd-table-top {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 20px; border-bottom: 1px solid var(--border);
-  }
-  .tvd-table-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-  .tvd-patient-tag {
-    font-family: 'JetBrains Mono', monospace; font-size: 11px;
-    color: var(--folder); background: var(--folder-g);
-    border: 1px solid rgba(192,132,252,0.2);
-    padding: 2px 9px; border-radius: 6px;
-    max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.02);
   }
 
-  .tvd-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .tvd-table thead th {
-    background: var(--surf2); padding: 11px 16px; text-align: left;
-    font-size: 10px; font-weight: 500; text-transform: uppercase;
-    letter-spacing: 0.8px; color: var(--muted); border-bottom: 1px solid var(--border);
+  .tvd-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
   }
-  .tvd-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
-  .tvd-table tbody tr:last-child { border-bottom: none; }
-  .tvd-table tbody tr:hover { background: var(--surf2); }
-  .tvd-table tbody td { padding: 12px 16px; vertical-align: middle; }
-  .tvd-mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim); }
 
-  /* ── Mini bar ── */
-  .tvd-bar-wrap { width: 72px; height: 4px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 7px; }
-  .tvd-bar-fill { height: 100%; border-radius: 99px; }
-  .tvd-bar-fill.green { background: var(--green); }
-  .tvd-bar-fill.amber { background: var(--amber); }
-  .tvd-bar-fill.red   { background: var(--red); }
-
-  /* ── Review btn ── */
-  .tvd-review-btn {
-    background: var(--accent-g); border: 1px solid rgba(56,189,248,0.25);
-    color: var(--accent); padding: 5px 13px; border-radius: 7px;
-    font-size: 12px; font-family: 'Sora', sans-serif; font-weight: 500;
-    cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
-    transition: all 0.18s;
+  .tvd-table th {
+    padding: 1.25rem 1rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: inherit;
+    opacity: 0.5;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(128,128,128,0.1);
   }
-  .tvd-review-btn:hover { background: var(--accent); color: #000; }
 
-  /* ── Modal ── */
-  .tvd-overlay {
+  .tvd-table td {
+    padding: 1.25rem 1rem;
+    background: rgba(128,128,128,0.04);
+    border-top: 1px solid rgba(128,128,128,0.03);
+    border-bottom: 1px solid rgba(128,128,128,0.03);
+    color: inherit;
+  }
+
+  .tvd-table tr td:first-child { border-radius: 12px 0 0 12px; }
+  .tvd-table tr td:last-child { border-radius: 0 12px 12px 0; }
+
+  .tvd-table tr:hover td {
+    background: rgba(128,128,128,0.08);
+  }
+
+  .tvd-btn-review {
+    background: #4f8ed9;
+    border: none;
+    color: white !important;
+    padding: 0.6rem 1.4rem;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(79, 142, 217, 0.2);
+  }
+
+  .tvd-btn-review:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(79, 142, 217, 0.4);
+    filter: brightness(1.1);
+  }
+
+  .tvd-badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tvd-badge.pending { background: rgba(255, 193, 7, 0.15); color: #b48a00; border: 1px solid rgba(255, 193, 7, 0.3); }
+  .tvd-badge.reviewed { background: rgba(40, 167, 69, 0.15); color: #1e7e34; border: 1px solid rgba(40, 167, 69, 0.3); }
+  .tvd-badge.engagement { background: rgba(128,128,128,0.1); color: inherit; border: 1px solid rgba(128,128,128,0.2); }
+
+  /* Folder Cards */
+  .tvd-folder {
+    background: rgba(128,128,128,0.05);
+    border: 1px solid rgba(128,128,128,0.1);
+    border-radius: 18px;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: inherit;
+  }
+
+  .tvd-folder:hover {
+    transform: translateY(-6px);
+    background: rgba(128,128,128,0.08);
+    border-color: #4f8ed9;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.05);
+  }
+
+  .tvd-video-wrap { 
+    background: #000; border-radius: 15px; overflow: hidden; border: 1px solid rgba(128,128,128,0.2);
+    position: relative; width: 100%; aspect-ratio: 16 / 9;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  }
+  .tvd-video-wrap video { width: 100%; height: 100%; object-fit: contain; }
+
+  .tvd-modal-overlay {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,0.82); backdrop-filter: blur(8px);
+    background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
     z-index: 1000; display: flex; align-items: center; justify-content: center;
-    padding: 20px; animation: tvd-fade 0.2s ease;
+    padding: 20px;
   }
-  @keyframes tvd-fade { from { opacity:0 } to { opacity:1 } }
-  .tvd-modal {
-    background: var(--surf); border: 1px solid var(--border);
-    border-radius: 22px; width: 100%; max-width: 1080px;
-    max-height: 90vh; overflow: hidden;
+  .tvd-modal-content {
+    background: #0b0e14; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 28px; width: 100%; max-width: 1150px;
+    max-height: 92vh; overflow: hidden;
     display: flex; flex-direction: column;
-    animation: tvd-up 0.22s ease;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+    color: white !important;
   }
-  @keyframes tvd-up { from { transform:translateY(16px); opacity:0 } to { transform:translateY(0); opacity:1 } }
 
-  .tvd-modal-hdr {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 20px 24px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  /* Custom tabs */
+  .custom-tabs .nav-link {
+    color: inherit; opacity: 0.5; border: none;
+    padding: 1.25rem 2rem; font-weight: 700; font-size: 0.9rem;
+    transition: all 0.3s;
   }
-  .tvd-modal-title { font-size: 15px; font-weight: 600; }
-  .tvd-modal-meta  { font-size: 11.5px; color: var(--muted); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
-  .tvd-close-btn {
-    width: 32px; height: 32px; border: 1px solid var(--border);
-    background: var(--surf2); color: var(--muted); border-radius: 8px;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    font-size: 16px; transition: all 0.18s; flex-shrink: 0;
+  .custom-tabs .nav-link.active {
+    background: transparent !important; color: inherit !important;
+    opacity: 1;
+    border-bottom: 4px solid #4f8ed9;
   }
-  .tvd-close-btn:hover { background: var(--red-g); border-color: rgba(248,113,113,0.3); color: var(--red); }
-
-  .tvd-modal-body { display: grid; grid-template-columns: 1fr 320px; overflow: hidden; flex: 1; }
-  .tvd-panel-l {
-    padding: 20px; display: flex; flex-direction: column; gap: 16px;
-    overflow-y: auto; border-right: 1px solid var(--border);
-  }
-  .tvd-panel-r { padding: 20px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
-
-  .tvd-video-wrap { background: #000; border-radius: var(--r); overflow: hidden; border: 1px solid var(--border); }
-  .tvd-video-wrap video { width: 100%; display: block; max-height: 340px; }
-
-  .tvd-timeline { background: var(--surf2); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
-  .tvd-tl-hdr {
-    padding: 11px 16px; border-bottom: 1px solid var(--border);
-    font-size: 10.5px; font-weight: 500; color: var(--dim);
-    text-transform: uppercase; letter-spacing: 0.7px;
-    display: flex; align-items: center; gap: 7px;
-  }
-  .tvd-tl-body { padding: 14px 16px; display: flex; align-items: flex-end; height: 88px; gap: 2px; }
-  .tvd-tbar { flex: 1; min-width: 3px; border-radius: 2px 2px 0 0; cursor: pointer; transition: opacity 0.15s; }
-  .tvd-tbar:hover { opacity: 0.7; }
-  .tvd-tl-empty { width: 100%; text-align: center; color: var(--muted); font-size: 12.5px; }
-
-  .tvd-kpi { background: var(--surf2); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; }
-  .tvd-kpi-title { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.9px; color: var(--muted); margin-bottom: 14px; }
-  .tvd-kpi-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .tvd-kpi-row:last-child { margin-bottom: 0; }
-  .tvd-kpi-lbl { font-size: 12.5px; color: var(--dim); }
-  .tvd-kpi-val { font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
-  .tvd-progress { height: 4px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; margin-top: 4px; margin-bottom: 12px; }
-  .tvd-progress-fill { height: 100%; border-radius: 99px; transition: width 0.5s; }
-
-  .tvd-notes-lbl { font-size: 11px; font-weight: 500; color: var(--dim); margin-bottom: 7px; text-transform: uppercase; letter-spacing: 0.7px; }
-  .tvd-textarea {
-    width: 100%; background: var(--surf2); border: 1px solid var(--border);
-    border-radius: var(--r); color: var(--text); font-family: 'Sora', sans-serif;
-    font-size: 13px; line-height: 1.65; padding: 12px; resize: none; outline: none;
-    transition: border-color 0.2s; min-height: 120px;
-  }
-  .tvd-textarea:focus { border-color: rgba(56,189,248,0.35); }
-  .tvd-textarea::placeholder { color: var(--muted); }
-
-  .tvd-save-btn {
-    width: 100%; background: var(--green); border: none; color: #000;
-    padding: 11px; border-radius: var(--r); font-size: 13.5px; font-weight: 600;
-    font-family: 'Sora', sans-serif; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    transition: all 0.2s;
-  }
-  .tvd-save-btn:hover { background: #2ecc8f; transform: translateY(-1px); }
-  .tvd-save-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-  .tvd-loading {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    min-height: 55vh; gap: 14px; color: var(--muted); font-size: 13px;
-  }
-  .tvd-spinner {
-    width: 34px; height: 34px; border: 3px solid var(--border);
-    border-top-color: var(--accent); border-radius: 50%;
-    animation: tvd-spin 0.8s linear infinite;
-  }
-  @keyframes tvd-spin { to { transform: rotate(360deg); } }
-  .tvd-empty { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 13px; }
-
-  .tvd-panel-l::-webkit-scrollbar,
-  .tvd-panel-r::-webkit-scrollbar { width: 4px; }
-  .tvd-panel-l::-webkit-scrollbar-thumb,
-  .tvd-panel-r::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 `;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -332,41 +322,144 @@ const safeParse = (data, fallback) => {
   }
 };
 
-const recalc = (gazeData) => {
-  if (!gazeData || gazeData.length === 0)
-    return {
-      avgAttentionScore: 0,
-      faceDetectionRate: 0,
-      engagementLevel: "Low",
-    };
-  const det = gazeData.filter((f) => f.faceDetected);
-  const avg =
-    det.length > 0
-      ? det.reduce((s, f) => s + (f.attentionScore || 0), 0) / det.length
-      : 0;
-  const rate = (det.length / gazeData.length) * 100;
-  return {
-    avgAttentionScore: avg,
-    faceDetectionRate: rate,
-    engagementLevel: avg > 70 ? "High" : avg > 40 ? "Medium" : "Low",
-  };
+// ─── Clinical Logic Helpers ──────────────────────────────────────────────────
+// recalc removed as attention is no longer tracked in dashboard
+
+
+/**
+ * Game Logic Explanation:
+ * - Accuracy: Percentage of correct actions vs total moves. Indicates cognitive precision.
+ * - Processing Speed: Inverse of time taken per match/action. Indicates neural processing efficiency.
+ * - Persistence: Based on level reached vs time spent. Indicates frustration tolerance.
+ */
+const getGameAnalysis = (game) => {
+  const meta = game.metadata || {};
+  const accuracy = game.accuracy || meta.accuracy || (game.score > 0 ? 75 : 0);
+  
+  return [
+    { label: "Accuracy Score", value: accuracy, color: scoreHex(accuracy), desc: "Percentage of correct moves vs total attempts." },
+  ];
 };
 
-const scoreColor = (s) => {
-  const n = Number(s);
-  return n > 70 ? "green" : n > 40 ? "amber" : "red";
+const getRadarData = (game, previousGame = null) => {
+  const meta = game.metadata || {};
+  const prevMeta = previousGame?.metadata || {};
+  
+  const score = game.score || meta.score || 0;
+  const duration = game.duration || meta.timeSpent || meta.duration || 60;
+  const acc = game.accuracy || meta.accuracy || 0;
+  const level = game.levelReached || meta.level || 1;
+  const moves = meta.moves || 0;
+
+  const prevScore = previousGame?.score || prevMeta.score || 0;
+  const prevAcc = previousGame?.accuracy || prevMeta.accuracy || 0;
+
+  // --- DYNAMIC SCALING ---
+  // standardizes different game point systems to a 0-100 normalized scale for the radar.
+  let maxScore = 100; // Default to 100 for games that send percentages (Sound Scape, Magic Hands, Pattern)
+  if (game.gameName === "Imitation Game") maxScore = 800;
+  if (game.gameName === "Emotion Match") maxScore = 12; // Sending raw matches (max 12)
+  if (game.gameName === "Face Mimic") maxScore = 400; // 4 emotions * 100 points
+
+  // Moves Efficiency Logic (Optimal Moves / Actual Moves)
+  let minMoves = 0;
+  if (game.gameName === "Emotion Match") {
+    minMoves = level === 1 ? 4 : level === 2 ? 8 : 12;
+  } else {
+    minMoves = moves > 0 ? Math.max(1, Math.floor(moves * 0.7)) : 10;
+  }
+  const movesEfficiency = moves > 0 ? Math.min(100, Math.round((minMoves / moves) * 100)) : 0;
+  
+  const scoreNorm = Math.min(100, (score / maxScore) * 100);
+  const accNorm = acc;
+  const levelNorm = Math.min(100, (level / (game.gameName === "Pattern Adventure" ? 10 : 5)) * 100);
+  const durationNorm = Math.min(100, (duration / 300) * 100);
+
+  return [
+    { 
+      subject: 'Score', 
+      A: scoreNorm, 
+      B: previousGame ? Math.min(100, (prevScore / maxScore) * 100) : 0,
+      fullMark: 100, 
+      trueValue: Math.round(score), 
+      trend: score > prevScore ? 'up' : score < prevScore ? 'down' : 'stable',
+      diff: Math.round(score - prevScore),
+      helpText: "Total achievement points earned."
+    },
+    { 
+      subject: 'Accuracy', 
+      A: accNorm, 
+      B: previousGame ? prevAcc : 0,
+      fullMark: 100, 
+      trueValue: `${acc}%`,
+      trend: acc > prevAcc ? 'up' : acc < prevAcc ? 'down' : 'stable',
+      diff: Math.round(acc - prevAcc),
+      helpText: "Precision and success rate."
+    },
+    { 
+      subject: 'Level', 
+      A: levelNorm, 
+      B: previousGame ? Math.min(100, (previousGame.levelReached / 5) * 100) : 0,
+      fullMark: 100, 
+      trueValue: level,
+      trend: level > (previousGame?.levelReached || 0) ? 'up' : level < (previousGame?.levelReached || 0) ? 'down' : 'stable'
+    },
+    { 
+      subject: 'Duration', 
+      A: durationNorm, 
+      B: previousGame ? Math.min(100, ((previousGame.duration || prevMeta.duration || 60) / 300) * 100) : 0,
+      fullMark: 100, 
+      trueValue: `${Math.round(duration)}s`,
+      trend: duration < (previousGame?.duration || 1000) ? 'up' : 'down'
+    },
+    { 
+      subject: 'Moves', 
+      A: movesEfficiency, 
+      B: previousGame ? Math.min(100, ((prevMeta.moves || 0) / 50) * 100) : 0, // Fallback for old data
+      fullMark: 100, 
+      trueValue: `${movesEfficiency}%`,
+      helpText: "Efficiency (Optimal / Actual moves)."
+    },
+  ];
 };
-const scoreHex = (s) =>
-  scoreColor(s) === "green"
-    ? "#34d399"
-    : scoreColor(s) === "amber"
-      ? "#fbbf24"
-      : "#f87171";
+
+const scoreColor = (s) => (Number(s) > 70 ? "success" : Number(s) > 40 ? "warning" : "danger");
+const scoreHex = (s) => (Number(s) > 70 ? "#34d399" : Number(s) > 40 ? "#fbbf24" : "#f87171");
 const fmt = (n) => Math.round(Number(n) || 0);
 const fmtDur = (s) => {
   const sec = Number(s) || 0;
   return `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, "0")}`;
 };
+const getGameDescription = (gameName) => {
+  const desc = {
+    "Emotion Match": {
+      purpose: "Emotional Recognition & Memory",
+      detail: "Trains the patient to identify and match facial expressions with their corresponding emotions, improving social empathy and short-term memory."
+    },
+    "Pattern Adventure": {
+      purpose: "Cognitive Logic & Sequencing",
+      detail: "Focuses on visual pattern recognition and logical sequencing, helping the patient follow multi-step cognitive instructions."
+    },
+    "Face Mimic": {
+      purpose: "Facial Motor Control & Empathy",
+      detail: "Encourages mirroring of facial expressions to improve muscle control and the physiological understanding of emotional states."
+    },
+    "Imitation Game": {
+      purpose: "Gross Motor Coordination",
+      detail: "Develops body awareness and the ability to follow physical movements, targeting proprioception and coordination."
+    },
+    "Sound Scape": {
+      purpose: "Auditory Processing & Focus",
+      detail: "Trains auditory localization and sound distinction, helping patients process complex sensory environments."
+    },
+    "Magic Hands": {
+      purpose: "Fine Motor & Hand-Eye Coordination",
+      detail: "Uses gesture-based interaction to improve precise hand movements and visual-motor integration."
+    }
+  };
+  return desc[gameName] || { purpose: "General Skill Development", detail: "Focuses on cognitive engagement and response consistency." };
+};
+
 const absMediaUrl = (u) => {
   if (!u) return null;
   if (u.startsWith("http://") || u.startsWith("https://")) return u;
@@ -374,77 +467,55 @@ const absMediaUrl = (u) => {
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
-const TherapistVideoDashboard = () => {
-  const { user } = useContext(AuthContext);
+const TherapistDashboard = () => {
+  const { user, logout } = useContext(AuthContext);
+  const { theme, colors, changeTheme, availableThemes } = useTheme();
+  const therapistId = user?._id || "Therapist_Main";
 
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPatient, setSelectedPatient] = useState(null);
-  // Video review modal
+  const [activeTab, setActiveTab] = useState("patients");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Review state
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [notes, setNotes] = useState("");
   const [bookmarks, setBookmarks] = useState([]);
   const [saving, setSaving] = useState(false);
-  // Game review modal
   const [selectedGame, setSelectedGame] = useState(null);
   const [gameNotes, setGameNotes] = useState("");
   const [savingGame, setSavingGame] = useState(false);
 
-  const therapistId = user?.id;
+  const videoRef = useRef(null);
 
   useEffect(() => {
-    if (therapistId) {
-      fetchVideos();
-    } else setLoading(false);
+    if (therapistId) fetchVideos();
   }, [therapistId]);
 
   const fetchVideos = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Videos
-      const { data: videoData } = await axios.get(
-        `http://localhost:4000/api/facecapture/videos/therapist/${therapistId}`,
-      );
+      const { data: videoData } = await axios.get(`http://localhost:4000/api/facecapture/videos/therapist/${therapistId}`);
       const rawVideos = Array.isArray(videoData) ? videoData : [];
       const processedVideos = rawVideos.map((v) => {
         const gazeData = safeParse(v.gazeData, []);
-        let gazeSummary = safeParse(v.gazeSummary, null);
-        const invalid =
-          !gazeSummary ||
-          typeof gazeSummary.avgAttentionScore === "undefined" ||
-          (gazeSummary.avgAttentionScore === 0 && gazeData.length > 0);
-        if (invalid) gazeSummary = recalc(gazeData);
-        return {
-          ...v,
-          type: "video",
-          gazeData,
-          gazeSummary: gazeSummary || {
-            avgAttentionScore: 0,
-            faceDetectionRate: 0,
-            engagementLevel: "Low",
-          },
-        };
+        const gazeSummary = safeParse(v.gazeSummary, { avgAttentionScore: 0, faceDetectionRate: 0, engagementLevel: "N/A" });
+        return { ...v, type: "video", gazeData, gazeSummary };
       });
 
-      // 2. Fetch Game Sessions
       let gameSessions = [];
       try {
-        const { data: gameData } = await axios.get(
-          `http://localhost:4000/api/analytics/therapist/${therapistId}`
-        );
-        if (Array.isArray(gameData)) {
-           gameSessions = gameData.map(g => ({
-             ...g,
-             type: 'game',
-             timestamp: g.playedAt, // Normalize date key to timestamp for unified sorting
-           }));
-        }
-      } catch (gameErr) {
-        console.error("Failed to fetch game sessions", gameErr);
-      }
+        const { data: gameData } = await axios.get(`http://localhost:4000/api/analytics/therapist/${therapistId}`);
+        if (Array.isArray(gameData)) gameSessions = gameData.map(g => ({ ...g, type: 'game', timestamp: g.playedAt || g.timestamp }));
+      } catch (e) { console.error("Game fetch error", e); }
 
-      const combined = [...processedVideos, ...gameSessions];
-      setVideos(combined);
+      const allSessions = [...processedVideos, ...gameSessions];
+      const cleanSessions = allSessions.filter(v => {
+        const uname = (v.username || v.userId || "").toLowerCase();
+        return uname !== "explorer" && uname !== "unknown" && uname !== "";
+      });
+      setVideos(cleanSessions);
     } catch (e) {
       console.error("Fetch failed:", e);
       setVideos([]);
@@ -453,682 +524,473 @@ const TherapistVideoDashboard = () => {
     }
   };
 
-  // ── Group into per-patient folders by username
   const patientFolders = React.useMemo(() => {
     const map = {};
     videos.forEach((v) => {
-      const uname = v.username || v.userId || "unknown"; // Use username as primary key
-      const uid = v.userId; // Keep userId for reference
-      if (!map[uname])
-        map[uname] = { sessions: [], username: uname, userId: uid };
+      const uname = v.username || v.userId || "unknown";
+      if (!map[uname]) map[uname] = { sessions: [], username: uname };
       map[uname].sessions.push(v);
     });
-    return Object.entries(map)
-      .map(([username, data]) => {
-        const videoSessions = data.sessions.filter(s => s.type === 'video');
-        const gameSessions = data.sessions.filter(s => s.type === 'game');
-        return {
-          username,
-          userId: data.userId,
-          sessions: data.sessions,
-          latest: data.sessions[0]?.timestamp,
-          avgAttn:
-            videoSessions.length > 0
-              ? videoSessions.reduce(
-                  (s, v) => s + (v.gazeSummary?.avgAttentionScore || 0),
-                  0,
-                ) / videoSessions.length
-              : 0,
-          reviewed: videoSessions.filter((v) => v.reviewed).length,
-          pending: videoSessions.filter((v) => !v.reviewed).length,
-          highEng: videoSessions.filter(
-            (v) => v.gazeSummary?.engagementLevel === "High",
-          ).length,
-          videoCount: videoSessions.length,
-          gameCount: gameSessions.length,
-        };
-      })
-      .sort((a, b) => new Date(b.latest) - new Date(a.latest));
+
+    return Object.values(map).map((data) => {
+      const videoSessions = data.sessions.filter((s) => s.type === "video");
+      const gameSessions = data.sessions.filter((s) => s.type === "game");
+      return {
+        username: data.username,
+        sessions: data.sessions,
+        latest: data.sessions[0]?.timestamp,
+        pending: videoSessions.filter((v) => !v.reviewed).length + gameSessions.filter(g => !g.reviewed).length,
+        videoCount: videoSessions.length,
+        gameCount: gameSessions.length,
+      };
+    }).sort((a, b) => new Date(b.latest) - new Date(a.latest));
   }, [videos]);
 
-  const patientSessions = selectedPatient
-    ? videos.filter((v) => (v.username || v.userId) === selectedPatient)
-    : [];
+  const patientSessions = selectedPatient ? videos.filter((v) => (v.username || v.userId) === selectedPatient) : [];
   const patientVideos = patientSessions.filter(s => s.type === 'video');
-  const patientGames  = patientSessions.filter(s => s.type === 'game');
+  const patientGames = patientSessions.filter(s => s.type === 'game');
+  const currentFolder = patientFolders.find(f => f.username === selectedPatient);
 
-  const currentFolder = patientFolders.find(
-    (f) => f.username === selectedPatient,
-  );
+  const [viewRaw, setViewRaw] = useState(false);
 
-  const openVideo = (v) => {
-    setSelectedVideo(v);
-    setNotes(v.therapistNotes || "");
-    setBookmarks(v.highlights || []);
+  const openVideo = (v) => { setSelectedVideo(v); setNotes(v.therapistNotes || ""); setBookmarks(v.highlights || []); };
+  const openGame = (g) => { 
+    const patientSessions = videos.filter((v) => (v.username || v.userId) === (g.username || g.userId));
+    const gameHistory = patientSessions.filter(s => s.type === 'game' && s.gameName === g.gameName).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const currentIndex = gameHistory.findIndex(s => s._id === g._id);
+    const previousGame = currentIndex < gameHistory.length - 1 ? gameHistory[currentIndex + 1] : null;
+    
+    setSelectedGame({ ...g, previousGame }); 
+    setGameNotes(g.therapistNotes || ""); 
   };
 
   const saveAnalysis = async () => {
     if (!selectedVideo) return;
     setSaving(true);
     try {
-      await axios.post(
-        `http://localhost:4000/api/facecapture/videos/${selectedVideo._id}/analyze`,
-        {
-          therapistNotes: notes,
-          bookmarks,
-          reviewed: true,
-          reviewedBy: therapistId,
-          reviewedAt: new Date(),
-        },
-      );
+      await axios.post(`http://localhost:4000/api/facecapture/videos/${selectedVideo._id}/analyze`, {
+        therapistNotes: notes, bookmarks, reviewed: true, reviewedBy: therapistId, reviewedAt: new Date(),
+      });
       await fetchVideos();
       setSelectedVideo(null);
-    } catch {
-      alert("Failed to save analysis");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const openGame = (g) => {
-    setSelectedGame(g);
-    setGameNotes(g.therapistNotes || "");
+    } catch { alert("Failed to save analysis"); } finally { setSaving(false); }
   };
 
   const saveGameReview = async () => {
     if (!selectedGame) return;
     setSavingGame(true);
     try {
-      await axios.post(
-        `http://localhost:4000/api/analytics/review/${selectedGame._id}`,
-        {
-          therapistNotes: gameNotes,
-          reviewed: true,
-          reviewedBy: therapistId,
-          reviewedAt: new Date(),
-        },
-      );
+      await axios.post(`http://localhost:4000/api/analytics/review/${selectedGame._id}`, {
+        therapistNotes: gameNotes, reviewed: true, reviewedBy: therapistId, reviewedAt: new Date(),
+      });
       await fetchVideos();
       setSelectedGame(null);
-    } catch {
-      alert("Failed to save game review");
-    } finally {
-      setSavingGame(false);
-    }
+    } catch { alert("Failed to save review"); } finally { setSavingGame(false); }
   };
 
-  // ── Global stats
-  const totalSessions = videos.length;
   const totalVideoSessions = videos.filter((v) => v.type === "video").length;
   const totalGameSessions = videos.filter((v) => v.type === "game").length;
-  const totalReviewed = videos.filter((v) => v.reviewed).length;
-  const globalAvgAttn =
-    totalVideoSessions > 0
-      ? videos
-          .filter((v) => v.type === "video")
-          .reduce(
-          (s, v) => s + (v.gazeSummary?.avgAttentionScore || 0),
-          0,
-        ) / totalVideoSessions
-      : 0;
-
-  if (loading)
-    return (
-      <>
-        <style>{styles}</style>
-        <div className="tvd">
-          <div className="tvd-loading">
-            <div className="tvd-spinner" />
-            <span>Loading patient data…</span>
-          </div>
-        </div>
-      </>
-    );
 
   return (
-    <>
+    <div className="tvd-wrapper" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       <style>{styles}</style>
-      <div className="tvd">
-        {/* Header */}
-        <div className="tvd-hdr">
-          <div className="tvd-hdr-l">
-            <div className="tvd-icon-box">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-              </svg>
-            </div>
-            <div>
-              <div className="tvd-title">Patient Session Vault</div>
-              <div className="tvd-sub">
-                {patientFolders.length} patients · {totalVideoSessions} video sessions · {totalGameSessions} game sessions
-              </div>
-            </div>
+
+      {/* --- SIDEBAR --- */}
+      <div className="tvd-sidebar" style={{ backgroundColor: colors.bgSidebar }}>
+        <div className="tvd-logo-area">
+          <div className="tvd-logo-icon"><FaBrain size={22} /></div>
+          <div className="h4 fw-bold mb-0">NeuroPlay</div>
+        </div>
+
+        <div className="mb-4">
+          <div className="small fw-bold opacity-40 mb-3 px-2">Theme</div>
+          <div className="d-flex flex-wrap gap-2 px-1">
+            {availableThemes.map((t) => (
+              <button key={t.id} onClick={() => changeTheme(t.id)} className="rounded-circle border-0 shadow-sm" style={{ width: "32px", height: "32px", backgroundColor: t.id === theme ? colors.accentColor : 'rgba(255,255,255,0.05)', color: t.id === theme ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: '10px', fontWeight: 800 }}>{t.id.charAt(0).toUpperCase()}</button>
+            ))}
           </div>
-          <button className="tvd-btn" onClick={() => { fetchVideos(); }}>
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path d="M23 4v6h-6M1 20v-6h6" />
-              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
-            </svg>
-            Refresh
+        </div>
+
+        <Nav className="flex-column gap-1">
+          <button className={`tvd-nav-item border-0 bg-transparent text-start w-100 ${activeTab === 'patients' && !selectedPatient ? 'active' : ''}`} onClick={() => { setActiveTab('patients'); setSelectedPatient(null); }}>
+            <FaHistory /> Home
           </button>
-        </div>
 
-        {/* Stats */}
-        <div className="tvd-stats">
-          <div className="tvd-stat">
-            <div className="tvd-stat-lbl">Patients</div>
-            <div className="tvd-stat-val purple">{patientFolders.length}</div>
-          </div>
-          <div className="tvd-stat">
-            <div className="tvd-stat-lbl">Video Sessions</div>
-            <div className="tvd-stat-val cyan">{totalVideoSessions}</div>
-          </div>
-          <div className="tvd-stat">
-            <div className="tvd-stat-lbl">Game Sessions</div>
-            <div className="tvd-stat-val purple">{totalGameSessions}</div>
-          </div>
-          <div className="tvd-stat">
-            <div className="tvd-stat-lbl">Avg Attention</div>
-            <div className="tvd-stat-val amber">{fmt(globalAvgAttn)}%</div>
-          </div>
-        </div>
+          <button className={`tvd-nav-item border-0 bg-transparent text-start w-100 ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+            <FaCog /> Settings
+          </button>
+        </Nav>
 
-        {/* Breadcrumb (only inside a folder) */}
-        {selectedPatient && (
-          <div className="tvd-crumb">
-            <button
-              className="tvd-crumb-link"
-              onClick={() => setSelectedPatient(null)}
-            >
-              ← All Patients
-            </button>
-            <span style={{ color: "var(--muted)" }}>›</span>
-            <span
-              style={{ color: "var(--accent)", fontWeight: 600, fontSize: 13 }}
-            >
-              {selectedPatient}
-            </span>
-            <span
-              style={{
-                marginLeft: "auto",
-                color: "var(--muted)",
-                fontSize: 12,
-              }}
-            >
-              {patientSessions.length} session
-              {patientSessions.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-        )}
+        <div className="mt-auto"><Button variant="outline-danger" className="w-100 rounded-pill py-2 fw-bold" onClick={logout}>Logout</Button></div>
+      </div>
 
-        {/* ── FOLDER VIEW ── */}
-        {!selectedPatient &&
-          (videos.length === 0 ? (
-            <div className="tvd-empty">
-              <div style={{ fontSize: 36, marginBottom: 10 }}>🗂️</div>
-              No patient sessions found.
-            </div>
-          ) : (
-            <div className="tvd-folder-grid">
-              {patientFolders.map((folder) => (
-                <div
-                  key={folder.username}
-                  className="tvd-folder-card"
-                  onClick={() => {
-                    setSelectedPatient(folder.username);
-                  }}
-                >
-                  <div className="tvd-folder-icon">👤</div>
-                  <div className="tvd-folder-id">Patient</div>
-                  <div className="tvd-folder-username" title={folder.username}>
-                    {folder.username}
-                  </div>
-                  <div className="tvd-folder-count">
-                    {folder.videoCount > 0 && <>📹 {folder.videoCount} video{folder.videoCount !== 1 ? "s" : ""}</>}
-                    {folder.videoCount > 0 && folder.gameCount > 0 && <>&nbsp;·&nbsp;</>}
-                    {folder.gameCount > 0 && <>🎮 {folder.gameCount} game{folder.gameCount !== 1 ? "s" : ""}</>}
-                    &nbsp;·&nbsp;{folder.reviewed} reviewed
-                  </div>
-                  <div className="tvd-folder-pills">
-                    <span className={`tvd-badge ${scoreColor(folder.avgAttn)}`}>
-                      {fmt(folder.avgAttn)}% avg
-                    </span>
-                    {folder.pending > 0 && (
-                      <span className="tvd-badge amber">
-                        {folder.pending} pending
-                      </span>
-                    )}
-                    {folder.highEng > 0 && (
-                      <span className="tvd-badge green">
-                        {folder.highEng} high
-                      </span>
-                    )}
-                  </div>
-                  <div className="tvd-folder-date">
-                    Last: {new Date(folder.latest).toLocaleDateString()}
-                  </div>
+      {/* --- MAIN CONTENT --- */}
+      <div className="tvd-main">
+        {loading ? (
+          <div className="d-flex flex-column align-items-center justify-content-center h-100 opacity-50">
+             <div className="spinner-border text-primary mb-3" />
+             <div className="fw-bold" style={{ color: colors.textPrimary }}>Securing Vault Data...</div>
+          </div>
+
+        ) : activeTab === 'settings' ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+             <h1 className="fw-800 mb-4" style={{ color: colors.textPrimary }}>Therapist Settings</h1>
+             <Card className="border-0 shadow-sm rounded-4 p-4" style={{ backgroundColor: colors.bgCard, color: colors.textPrimary }}>
+                <h5 className="fw-bold mb-4">Account Configuration</h5>
+                <Form.Group className="mb-3">
+                  <Form.Label>Clinical Name</Form.Label>
+                  <Form.Control type="text" readOnly value={user?.username || "Therapist"} className="bg-dark text-white border-secondary" />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Assigned Therapist ID</Form.Label>
+                  <Form.Control type="text" readOnly value={therapistId} className="bg-dark text-white border-secondary" />
+                </Form.Group>
+                <hr className="my-4 opacity-10" />
+                <Button variant="primary" disabled>Update Profile</Button>
+             </Card>
+          </motion.div>
+        ) : !selectedPatient ? (
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="d-flex justify-content-between align-items-end mb-4">
+              <div>
+                <h1 className="fw-800 mb-1" style={{ color: colors.textPrimary }}>Patient Session Vault</h1>
+                <div className="small fw-500" style={{ color: colors.textPrimary, opacity: 0.6 }}>
+                  {patientFolders.length} patients • {totalVideoSessions} video sessions • {totalGameSessions} game sessions
                 </div>
+              </div>
+              <Button variant="dark" size="sm" className="rounded-pill px-4 border border-secondary" style={{ backgroundColor: colors.bgCard, color: colors.textPrimary }} onClick={fetchVideos}>
+                 <FaSync className="me-2" /> Refresh
+              </Button>
+            </div>
+
+            <div className="tvd-stat-grid">
+              <div className="tvd-stat-card" style={{ "--accent": "#6a11cb", color: colors.textPrimary }}>
+                <div className="tvd-stat-label">Patients</div>
+                <div className="tvd-stat-value">{patientFolders.length}</div>
+              </div>
+              <div className="tvd-stat-card" style={{ "--accent": "#00d2ff", color: colors.textPrimary }}>
+                <div className="tvd-stat-label">Video Sessions</div>
+                <div className="tvd-stat-value">{totalVideoSessions}</div>
+              </div>
+              <div className="tvd-stat-card" style={{ "--accent": "#ff00ff", color: colors.textPrimary }}>
+                <div className="tvd-stat-label">Game Sessions</div>
+                <div className="tvd-stat-value">{totalGameSessions}</div>
+              </div>
+              <div className="tvd-stat-card" style={{ "--accent": "#ffbf00", color: colors.textPrimary }}>
+                <div className="tvd-stat-label">Reviewed Sessions</div>
+                <div className="tvd-stat-value">{videos.filter(v => v.reviewed).length}</div>
+              </div>
+            </div>
+
+            <h4 className="fw-bold mb-4" style={{ color: colors.textPrimary, opacity: 0.75 }}>Patient Records</h4>
+            <Row className="g-4">
+              {patientFolders.map((p) => (
+                <Col key={p.username} xl={3} lg={4} md={6}>
+                  <div className="tvd-folder" onClick={() => setSelectedPatient(p.username)} style={{ color: colors.textPrimary }}>
+                    <div className="d-flex justify-content-between align-items-start mb-3">
+                       <FaFolder size={32} style={{ color: colors.accentColor }} className="opacity-40" />
+                       {p.pending > 0 && <Badge bg="danger" className="rounded-pill">{p.pending}</Badge>}
+                    </div>
+                    <h5 className="fw-bold mb-1">{p.username}</h5>
+                    <div className="small mb-3" style={{ opacity: 0.5 }}>{p.videoCount + p.gameCount} Total Sessions</div>
+                    <div className="d-flex align-items-center gap-2 pt-3 border-top border-secondary" style={{ opacity: 0.75 }}>
+                        <FaHistory size={12} />
+                        <span className="small fw-bold">Active Records</span>
+                    </div>
+                  </div>
+                </Col>
               ))}
-            </div>
-          ))}
-
-        {/* ── PATIENT DETAIL (two sections) ── */}
-        {selectedPatient && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-            {/* ─── Section header ─────────────── */}
-            <div className="tvd-table-top" style={{ marginBottom: 0 }}>
-              <div className="tvd-table-title">
-                <span style={{ marginRight: 12 }}>📋</span>Sessions for
-                <span className="tvd-patient-tag" title={selectedPatient}>
-                  <strong>{selectedPatient}</strong>
-                </span>
-              </div>
-              {currentFolder && (
-                <div style={{ display: "flex", gap: 8 }}>
-                  <span className="tvd-badge cyan">
-                    📹 {currentFolder.videoCount} video{currentFolder.videoCount !== 1 ? 's' : ''}
-                  </span>
-                  <span className="tvd-badge purple">
-                    🎮 {currentFolder.gameCount} game{currentFolder.gameCount !== 1 ? 's' : ''}
-                  </span>
-                  {currentFolder.avgAttn > 0 && (
-                    <span className={`tvd-badge ${scoreColor(currentFolder.avgAttn)}`}>
-                      Avg Attn {fmt(currentFolder.avgAttn)}%
-                    </span>
-                  )}
-                  {currentFolder.pending > 0 && (
-                    <span className="tvd-badge amber">
-                      {currentFolder.pending} pending
-                    </span>
-                  )}
-                </div>
-              )}
+            </Row>
+          </motion.div>
+        ) : (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <div className="d-flex align-items-center mb-4 gap-3">
+              <Button variant="link" onClick={() => setSelectedPatient(null)} className="p-0 text-decoration-none d-flex align-items-center gap-2" style={{ color: colors.accentColor }}>
+                <FaChevronLeft /> All Patients
+              </Button>
+              <div className="h4 fw-bold mb-0" style={{ color: colors.textPrimary }}>/ {selectedPatient}</div>
             </div>
 
-            {/* ─── VIDEO SESSIONS ─────────────── */}
-            <div className="tvd-table-wrap">
-              <div className="tvd-table-top">
-                <div className="tvd-table-title" style={{ fontSize: 14 }}>
-                  📹 Video Sessions
-                  <span className="tvd-badge gray" style={{ marginLeft: 10, fontSize: 11 }}>
-                    {patientVideos.length}
-                  </span>
+            <div className="d-flex justify-content-between align-items-center mb-4 p-3 rounded-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+               <div className="d-flex align-items-center gap-3">
+                  <Badge bg="dark" className="p-2 px-3 border border-secondary fw-bold shadow-sm"><FaVideo className="me-2" style={{ color: '#00d2ff' }}/> {patientVideos.length} videos</Badge>
+                  <Badge bg="dark" className="p-2 px-3 border border-secondary fw-bold shadow-sm"><FaGamepad className="me-2" style={{ color: '#ff00ff' }}/> {patientGames.length} games</Badge>
+               </div>
+                <div className="d-flex align-items-center gap-3">
+                   <Badge bg="danger" className="p-2 px-3 fw-bold shadow-sm">{currentFolder?.pending} pending</Badge>
                 </div>
-              </div>
-              {patientVideos.length === 0 ? (
-                <div className="tvd-empty">No video sessions recorded yet.</div>
-              ) : (
-                <table className="tvd-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Date & Time</th>
-                      <th>Duration</th>
-                      <th>Avg Attention</th>
-                      <th>Face Detection</th>
-                      <th>Engagement</th>
-                      <th>Status</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {patientVideos.map((v, idx) => {
-                      const attn = v.gazeSummary?.avgAttentionScore || 0;
-                      const face = v.gazeSummary?.faceDetectionRate || 0;
-                      const eng  = v.gazeSummary?.engagementLevel || "Low";
-                      return (
+            </div>
+
+            <Tabs defaultActiveKey="videos" className="mb-4 custom-tabs">
+              <Tab eventKey="videos" title="Video Sessions">
+                <div className="tvd-table-card" style={{ color: colors.textPrimary }}>
+                  <table className="tvd-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Date & Time</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {patientVideos.map((v, idx) => (
                         <tr key={v._id || idx}>
-                          <td><span className="tvd-mono">#{patientVideos.length - idx}</span></td>
-                          <td style={{ color: "var(--dim)", fontSize: 12.5 }}>
-                            {new Date(v.timestamp).toLocaleString()}
-                          </td>
-                          <td><span className="tvd-mono">{fmtDur(v.duration)}</span></td>
+                          <td style={{ opacity: 0.3 }}>#{patientVideos.length - idx}</td>
+                          <td className="fw-bold">{new Date(v.timestamp).toLocaleString()}</td>
+                          <td style={{ opacity: 0.7 }}>{fmtDur(v.duration)}</td>
+                          <td><span className={`tvd-badge ${v.reviewed ? 'reviewed' : 'pending'}`}>{v.reviewed ? 'Reviewed' : 'Pending'}</span></td>
                           <td>
-                            <span className={`tvd-badge ${scoreColor(attn)}`}>{fmt(attn)}%</span>
-                            <span className="tvd-bar-wrap">
-                              <span className={`tvd-bar-fill ${scoreColor(attn)}`} style={{ width: `${Math.min(attn, 100)}%` }} />
-                            </span>
-                          </td>
-                          <td><span className={`tvd-badge ${scoreColor(face)}`}>{fmt(face)}%</span></td>
-                          <td>
-                            <span className={`tvd-badge ${eng === "High" ? "green" : eng === "Medium" ? "amber" : "red"}`}>
-                              {eng}
-                            </span>
-                          </td>
-                          <td>
-                            <span className={`tvd-badge ${v.reviewed ? "green" : "amber"}`}>
-                              {v.reviewed ? "Reviewed" : "Pending"}
-                            </span>
-                          </td>
-                          <td>
-                            <button className="tvd-review-btn" onClick={() => openVideo(v)}>
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                              Review
+                            <button className="tvd-btn-review" onClick={() => openVideo(v)}>
+                               <FaPlay size={10}/> Review
                             </button>
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* ─── GAME SESSIONS ──────────────── */}
-            <div className="tvd-table-wrap">
-              <div className="tvd-table-top">
-                <div className="tvd-table-title" style={{ fontSize: 14 }}>
-                  🎮 Game Sessions
-                  <span className="tvd-badge gray" style={{ marginLeft: 10, fontSize: 11 }}>
-                    {patientGames.length}
-                  </span>
-                </div>
-              </div>
-              {patientGames.length === 0 ? (
-                <div className="tvd-empty">No game sessions recorded yet.</div>
-              ) : (
-                <table className="tvd-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Date & Time</th>
-                      <th>Game</th>
-                      <th>Score</th>
-                      <th>Level</th>
-                      <th>Behavior Video</th>
-                      <th>Privacy</th>
-                      <th>Status</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {patientGames.map((g, idx) => (
-                      <tr key={g._id || idx}>
-                        <td><span className="tvd-mono">#{patientGames.length - idx}</span></td>
-                        <td style={{ color: "var(--dim)", fontSize: 12.5 }}>
-                          {new Date(g.timestamp || g.playedAt).toLocaleString()}
-                        </td>
-                        <td><span className="tvd-badge purple">{g.gameName}</span></td>
-                        <td>
-                          <span className={`tvd-badge ${scoreColor(g.score)}`}>{g.score}</span>
-                          <span className="tvd-bar-wrap">
-                            <span className={`tvd-bar-fill ${scoreColor(g.score)}`} style={{ width: `${Math.min(g.score, 100)}%` }} />
-                          </span>
-                        </td>
-                        <td><span className="tvd-badge cyan">Lvl {g.levelReached || 1}</span></td>
-                        <td>
-                          {g.gameVideoUrl ? (
-                            <span className="tvd-badge green">Available</span>
-                          ) : (
-                            <span className="tvd-badge gray">Not Recorded</span>
-                          )}
-                        </td>
-                        <td>
-                          <span className={`tvd-badge ${g.faceBlurred ? "cyan" : "gray"}`}>
-                            {g.faceBlurred ? "Blurred" : "Raw"}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`tvd-badge ${g.reviewed ? "green" : "amber"}`}>
-                            {g.reviewed ? "Reviewed" : "Pending"}
-                          </span>
-                        </td>
-                        <td>
-                          <button className="tvd-review-btn" onClick={() => openGame(g)}>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                            Review
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-          </div>
-        )}
-
-        {/* ── VIDEO REVIEW MODAL ── */}
-        {selectedVideo && (
-          <div className="tvd-overlay" onClick={() => setSelectedVideo(null)}>
-            <div className="tvd-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="tvd-modal-hdr">
-                <div>
-                  <div className="tvd-modal-title">📹 Video Session Review</div>
-                  <div className="tvd-modal-meta">
-                    <strong>Patient:</strong>{" "}
-                    {selectedVideo.username || selectedVideo.userId} ·{" "}
-                    {new Date(selectedVideo.timestamp).toLocaleString()} ·{" "}
-                    {fmtDur(selectedVideo.duration)}
-                  </div>
-                </div>
-                <button className="tvd-close-btn" onClick={() => setSelectedVideo(null)}>✕</button>
-              </div>
-
-              <div className="tvd-modal-body">
-                <div className="tvd-panel-l">
-                  <div className="tvd-video-wrap">
-                    <video controls src={`http://localhost:4000/api/facecapture/video/stream/${selectedVideo._id}`} />
-                  </div>
-                  <div className="tvd-timeline">
-                    <div className="tvd-tl-hdr">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                      </svg>
-                      Attention Timeline
-                      <span style={{ marginLeft: "auto", color: "var(--muted)", fontSize: 10 }}>
-                        {selectedVideo.gazeData.length} frames
-                      </span>
-                    </div>
-                    <div className="tvd-tl-body">
-                      {selectedVideo.gazeData.length > 0 ? (
-                        selectedVideo.gazeData.map((pt, i) => (
-                          <div key={i} className="tvd-tbar"
-                            style={{ height: `${Math.max(pt.attentionScore || 0, 4)}%`, background: scoreHex(pt.attentionScore), opacity: pt.faceDetected ? 1 : 0.2 }}
-                            title={`Frame ${i + 1} | Attn: ${fmt(pt.attentionScore)}% | Face: ${pt.faceDetected ? "Yes" : "No"}`}
-                          />
-                        ))
-                      ) : (
-                        <div className="tvd-tl-empty">No gaze frame data available</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="tvd-panel-r">
-                  <div className="tvd-kpi">
-                    <div className="tvd-kpi-title">Key Indicators</div>
-                    <div className="tvd-kpi-row">
-                      <span className="tvd-kpi-lbl">Avg Attention</span>
-                      <span className="tvd-kpi-val" style={{ color: scoreHex(selectedVideo.gazeSummary.avgAttentionScore) }}>
-                        {fmt(selectedVideo.gazeSummary.avgAttentionScore)}%
-                      </span>
-                    </div>
-                    <div className="tvd-progress">
-                      <div className="tvd-progress-fill" style={{ width: `${Math.min(selectedVideo.gazeSummary.avgAttentionScore, 100)}%`, background: scoreHex(selectedVideo.gazeSummary.avgAttentionScore) }} />
-                    </div>
-                    <div className="tvd-kpi-row">
-                      <span className="tvd-kpi-lbl">Face Detection</span>
-                      <span className="tvd-kpi-val" style={{ color: scoreHex(selectedVideo.gazeSummary.faceDetectionRate) }}>
-                        {fmt(selectedVideo.gazeSummary.faceDetectionRate)}%
-                      </span>
-                    </div>
-                    <div className="tvd-progress">
-                      <div className="tvd-progress-fill" style={{ width: `${Math.min(selectedVideo.gazeSummary.faceDetectionRate, 100)}%`, background: scoreHex(selectedVideo.gazeSummary.faceDetectionRate) }} />
-                    </div>
-                    <div className="tvd-kpi-row">
-                      <span className="tvd-kpi-lbl">Engagement</span>
-                      <span className={`tvd-badge ${selectedVideo.gazeSummary.engagementLevel === "High" ? "green" : selectedVideo.gazeSummary.engagementLevel === "Medium" ? "amber" : "red"}`}>
-                        {selectedVideo.gazeSummary.engagementLevel}
-                      </span>
-                    </div>
-                    <div className="tvd-kpi-row" style={{ marginTop: 8 }}>
-                      <span className="tvd-kpi-lbl">Status</span>
-                      <span className={`tvd-badge ${selectedVideo.reviewed ? "green" : "gray"}`}>
-                        {selectedVideo.reviewed ? "Reviewed" : "Pending"}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="tvd-notes-lbl">Clinical Observations</div>
-                    <textarea className="tvd-textarea" value={notes} onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Document eye-contact patterns, engagement quality, repetitive behaviours…" rows={6} />
-                  </div>
-                  <button className="tvd-save-btn" onClick={saveAnalysis} disabled={saving}>
-                    {saving ? (<><div className="tvd-spinner" style={{ width: 15, height: 15, borderWidth: 2 }} />Saving…</>) : (
-                      <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-                        <polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
-                      </svg>Save & Mark Reviewed</>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── GAME REVIEW MODAL ── */}
-        {selectedGame && (
-          <div className="tvd-overlay" onClick={() => setSelectedGame(null)}>
-            <div className="tvd-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="tvd-modal-hdr">
-                <div>
-                  <div className="tvd-modal-title">🎮 Game Session Review</div>
-                  <div className="tvd-modal-meta">
-                    <strong>Patient:</strong> {selectedGame.username || selectedGame.userId} ·{" "}
-                    {new Date(selectedGame.timestamp || selectedGame.playedAt).toLocaleString()}
-                  </div>
-                </div>
-                <button className="tvd-close-btn" onClick={() => setSelectedGame(null)}>✕</button>
-              </div>
-
-              <div className="tvd-modal-body">
-                {/* Left panel — game stats */}
-                <div className="tvd-panel-l">
-                  <div className="tvd-video-wrap">
-                    {selectedGame.gameVideoUrl ? (
-                      <video
-                        controls
-                        src={absMediaUrl(selectedGame.gameVideoUrl)}
-                        style={{ maxHeight: 320, width: "100%", background: "#000" }}
-                      />
-                    ) : (
-                      <div style={{ padding: 24, textAlign: "center", color: "var(--muted)" }}>
-                        No behavior video was recorded for this game session.
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ background: 'var(--surf2)', borderRadius: 12, border: '1px solid var(--border)', padding: 24, marginBottom: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                      <div style={{ fontSize: 40 }}>🎮</div>
-                      <div>
-                        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--folder)' }}>{selectedGame.gameName}</div>
-                        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Game Performance Summary</div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                      {[
-                        { label: 'Score', value: selectedGame.score, suffix: '', color: scoreHex(selectedGame.score) },
-                        { label: 'Level Reached', value: selectedGame.levelReached || 1, suffix: '', color: 'var(--accent)' },
-                        { label: 'Reviewed', value: selectedGame.reviewed ? 'Yes' : 'No', suffix: '', color: selectedGame.reviewed ? 'var(--green)' : 'var(--amber)' },
-                      ].map(({ label, value, suffix, color }) => (
-                        <div key={label} style={{ background: 'var(--surf3)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--border)' }}>
-                          <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{label}</div>
-                          <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: "'JetBrains Mono', monospace" }}>{value}{suffix}</div>
-                        </div>
                       ))}
-                    </div>
-                  </div>
-
-                  {/* Score bar */}
-                  <div style={{ background: 'var(--surf2)', borderRadius: 12, border: '1px solid var(--border)', padding: 20 }}>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 10 }}>Performance</div>
-                    {[{ label: 'Score', val: selectedGame.score }].map(({ label, val }) => (
-                      <div key={label} style={{ marginBottom: 14 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 12, color: 'var(--dim)' }}>{label}</span>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: scoreHex(val) }}>{val}%</span>
-                        </div>
-                        <div className="tvd-progress">
-                          <div className="tvd-progress-fill" style={{ width: `${Math.min(val, 100)}%`, background: scoreHex(val) }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                    </tbody>
+                  </table>
                 </div>
-
-                {/* Right panel — notes + save */}
-                <div className="tvd-panel-r">
-                  <div className="tvd-kpi">
-                    <div className="tvd-kpi-title">Session Details</div>
-                    <div className="tvd-kpi-row">
-                      <span className="tvd-kpi-lbl">Game</span>
-                      <span className="tvd-badge purple">{selectedGame.gameName}</span>
-                    </div>
-                    <div className="tvd-kpi-row">
-                      <span className="tvd-kpi-lbl">Score</span>
-                      <span className="tvd-kpi-val" style={{ color: scoreHex(selectedGame.score) }}>{selectedGame.score}</span>
-                    </div>
-                    <div className="tvd-kpi-row">
-                      <span className="tvd-kpi-lbl">Level</span>
-                      <span className="tvd-badge cyan">Level {selectedGame.levelReached || 1}</span>
-                    </div>
-                    <div className="tvd-kpi-row">
-                      <span className="tvd-kpi-lbl">Status</span>
-                      <span className={`tvd-badge ${selectedGame.reviewed ? "green" : "gray"}`}>
-                        {selectedGame.reviewed ? "Reviewed" : "Pending"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="tvd-notes-lbl">Clinical Observations</div>
-                    <textarea className="tvd-textarea" value={gameNotes} onChange={(e) => setGameNotes(e.target.value)}
-                      placeholder="Document the patient's game performance, focus, engagement, strategy, or behavioural observations…" rows={7} />
-                  </div>
-
-                  <button className="tvd-save-btn" onClick={saveGameReview} disabled={savingGame}>
-                    {savingGame ? (<><div className="tvd-spinner" style={{ width: 15, height: 15, borderWidth: 2 }} />Saving…</>) : (
-                      <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-                        <polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
-                      </svg>Save & Mark Reviewed</>
-                    )}
-                  </button>
+              </Tab>
+              <Tab eventKey="games" title="Game Sessions">
+                <div className="tvd-table-card" style={{ color: colors.textPrimary }}>
+                  <table className="tvd-table">
+                    <thead>
+                      <tr>
+                        <th>Date & Time</th>
+                        <th>Game Name</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {patientGames.map((g, idx) => (
+                        <tr key={g._id || idx}>
+                          <td className="fw-bold">{new Date(g.timestamp).toLocaleString()}</td>
+                          <td><Badge bg="primary" className="rounded-pill px-3 shadow-sm">{g.gameName}</Badge></td>
+                          <td className="fw-bold">{g.score}</td>
+                          <td><span className={`tvd-badge ${g.reviewed ? 'reviewed' : 'pending'}`}>{g.reviewed ? 'Reviewed' : 'Pending'}</span></td>
+                          <td>
+                            <button className="tvd-btn-review" onClick={() => openGame(g)}>
+                               <FaPlay size={10}/> Review
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            </div>
-          </div>
+              </Tab>
+            </Tabs>
+          </motion.div>
         )}
       </div>
-    </>
+
+      <AnimatePresence>
+        {selectedVideo && (
+          <div className="tvd-modal-overlay" onClick={() => setSelectedVideo(null)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="tvd-modal-content shadow-lg" onClick={e => e.stopPropagation()}>
+               <div className="p-4 border-bottom border-secondary d-flex justify-content-between align-items-center"><div><h5 className="fw-bold mb-0">Clinical Session Review</h5><div className="small opacity-50">{selectedVideo.username} · {new Date(selectedVideo.timestamp).toLocaleString()}</div></div><Button variant="link" className="text-white opacity-50 p-0" onClick={() => setSelectedVideo(null)}><FaTimes size={24}/></Button></div>
+               <div className="d-flex flex-grow-1 overflow-hidden">
+                  <div className="flex-grow-1 p-4 overflow-auto border-end border-secondary"><div className="tvd-video-wrap mb-4 bg-black"><video ref={videoRef} controls src={`http://localhost:4000/api/facecapture/video/stream/${selectedVideo._id}`} className="w-100 h-100" /></div></div>
+                  <div className="p-4 overflow-auto" style={{ width: 350 }}><h6 className="fw-bold small text-uppercase opacity-50 mb-3">Therapist Notes</h6><Form.Control as="textarea" rows={8} className="bg-dark text-white border-secondary mb-4" placeholder="Enter clinical observations..." value={notes} onChange={e => setNotes(e.target.value)} /><Button variant="primary" className="w-100 py-2 fw-bold" onClick={saveAnalysis} disabled={saving}>{saving ? 'Saving...' : 'Mark as Reviewed'}</Button></div>
+               </div>
+            </motion.div>
+          </div>
+        )}
+        {selectedGame && (
+          <div className="tvd-modal-overlay" onClick={() => setSelectedGame(null)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="tvd-modal-content" onClick={e => e.stopPropagation()}>
+               <div className="p-4 border-bottom border-secondary d-flex justify-content-between align-items-center">
+                  <div>
+                    <h5 className="fw-bold mb-0">Clinical Game Analysis</h5>
+                    <div className="small opacity-50">{selectedGame.username} · {selectedGame.gameName} · {new Date(selectedGame.timestamp).toLocaleString()}</div>
+                  </div>
+                  <Button variant="link" className="text-white opacity-50 p-0" onClick={() => setSelectedGame(null)}><FaTimes size={24}/></Button>
+               </div>
+               <div className="p-4 bg-primary bg-opacity-10 border-bottom border-secondary border-opacity-25">
+                  <div className="d-flex align-items-center gap-3">
+                     <div className="tvd-logo-icon" style={{ width: 40, height: 40, background: '#4f8ed9' }}><FaBrain size={20}/></div>
+                     <div>
+                        <div className="fw-800 small text-uppercase" style={{ color: '#4f8ed9', letterSpacing: '1px' }}>
+                           Objective: {getGameDescription(selectedGame.gameName).purpose}
+                        </div>
+                        <div className="small opacity-75 fw-500">
+                           {getGameDescription(selectedGame.gameName).detail}
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div className="d-flex flex-grow-1 overflow-hidden">
+                  <div className="flex-grow-1 p-4 overflow-auto border-end border-secondary">
+                    {selectedGame.gameVideoUrl ? (
+                      <div className="tvd-video-wrap bg-black mb-4">
+                        <video controls src={absMediaUrl(selectedGame.gameVideoUrl)} className="w-100 h-100" />
+                      </div>
+                    ) : (
+                      <div className="p-5 text-center bg-dark rounded-4 mb-4 border border-secondary opacity-50">
+                        <FaGamepad size={48} className="mb-3" />
+                        <div>Behavioral video not recorded for this session</div>
+                      </div>
+                    )}
+                    <Card className="bg-dark border-secondary overflow-hidden">
+                      <Card.Header className="bg-transparent border-secondary py-3 d-flex justify-content-between align-items-center">
+                        <span className="small fw-bold text-uppercase opacity-50">Session Metrics Summary</span>
+                        <Badge bg="primary" className="opacity-75">Session Comparison</Badge>
+                      </Card.Header>
+                      <Card.Body className="p-0">
+                        <div className="p-4 w-100">
+                           <div className="d-flex justify-content-between align-items-center mb-4">
+                              <h6 className="small fw-bold text-uppercase opacity-40 mb-0">Metric Deep Dive</h6>
+                              {selectedGame.previousGame && (
+                                <Badge bg="dark" className="border border-secondary opacity-50" style={{ fontSize: '10px' }}>
+                                  Compared to {new Date(selectedGame.previousGame.timestamp).toLocaleDateString()}
+                                </Badge>
+                              )}
+                           </div>
+                           <div className="row g-3">
+                             {getRadarData(selectedGame, selectedGame.previousGame).map(pt => (
+                               <div key={pt.subject} className="col-12">
+                                 <div className="p-3 rounded-4 border border-secondary" style={{ background: 'rgba(255,255,255,0.02)', transition: 'all 0.2s ease' }}>
+                                    <div className="d-flex justify-content-between align-items-center mb-2">
+                                       <div className="d-flex align-items-center gap-2">
+                                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4f8ed9' }} />
+                                          <div className="d-flex flex-column">
+                                              <span className="fw-bold opacity-75">{pt.subject}</span>
+                                              {pt.helpText && <small className="opacity-40" style={{ fontSize: '9px' }}>{pt.helpText}</small>}
+                                           </div>
+                                       </div>
+                                       <div className="text-end">
+                                          <div className="h5 mb-0 fw-800" style={{ color: '#4f8ed9' }}>
+                                              {pt.subject === 'Level' ? pt.trueValue : pt.trueValue}
+                                          </div>
+                                       </div>
+                                    </div>
+                                    
+                                    <ProgressBar now={pt.A} style={{ height: 4, background: 'rgba(255,255,255,0.05)', marginBottom: '10px' }} />
+
+                                    <div className="d-flex justify-content-between align-items-center">
+                                       <div className="d-flex align-items-center gap-2">
+                                          {pt.trend === 'up' && <Badge bg="success" className="p-1 px-2" style={{ fontSize: '9px', borderRadius: '4px' }}>↑ BETTER</Badge>}
+                                          {pt.trend === 'down' && <Badge bg="danger" className="p-1 px-2" style={{ fontSize: '9px', borderRadius: '4px' }}>↓ LOWER</Badge>}
+                                          {pt.trend === 'stable' && <Badge bg="secondary" className="p-1 px-2" style={{ fontSize: '9px', borderRadius: '4px' }}>↔ STABLE</Badge>}
+                                          {pt.diff !== undefined && pt.diff !== 0 && (
+                                            <span className={`small fw-bold ${pt.diff > 0 ? 'text-success' : 'text-danger'}`} style={{ fontSize: '11px', letterSpacing: '0.5px' }}>
+                                              {pt.diff > 0 ? `+${pt.diff}` : pt.diff} vs previous
+                                            </span>
+                                          )}
+                                       </div>
+                                       <div className="small opacity-30 fw-bold" style={{ fontSize: '10px' }}>RAW METRIC</div>
+                                    </div>
+                                 </div>
+                               </div>
+                             ))}
+                           </div>
+                           
+                           {/* --- CLINICAL INSIGHTS (As shown to User) --- */}
+                           {selectedGame.metadata && selectedGame.metadata.feedback && (
+                             <div className="mt-4 p-4 rounded-4 bg-primary bg-opacity-10 border border-primary border-opacity-20 shadow-sm">
+                                <div className="d-flex justify-content-between align-items-start mb-3">
+                                   <div>
+                                      <h6 className="small fw-bold text-uppercase opacity-50 mb-1">Clinical Interpretation</h6>
+                                      <div className="h5 fw-bold mb-0">{selectedGame.metadata.supportLevel || 'Independent'}</div>
+                                   </div>
+                                   <div className="d-flex gap-1">
+                                      {selectedGame.metadata.traits && selectedGame.metadata.traits.map((t, i) => (
+                                        <Badge key={i} bg="primary" className="opacity-75">{t}</Badge>
+                                      ))}
+                                   </div>
+                                </div>
+                                <p className="mb-0 text-white opacity-75 italic" style={{ fontSize: '14px', lineHeight: '1.6' }}>
+                                   "{selectedGame.metadata.feedback}"
+                                </p>
+                             </div>
+                           )}
+
+                           {/* --- GAME SPECIFIC METADATA BREAKDOWN --- */}
+                           {selectedGame.metadata && (selectedGame.metadata.emotionPerformance || selectedGame.metadata.poseBreakdown || selectedGame.metadata.posesMatched !== undefined) && (
+                             <div className="mt-4 pt-4 border-top border-secondary border-opacity-25">
+                                <h6 className="small fw-bold text-uppercase opacity-40 mb-3">Session Breakdown</h6>
+                                {selectedGame.metadata.emotionPerformance && (
+                                  <div className="d-flex flex-wrap gap-2">
+                                    {selectedGame.metadata.emotionPerformance.map((ep, i) => (
+                                      <Badge key={i} bg="dark" className="border border-secondary p-2 d-flex flex-column align-items-start" style={{ minWidth: '80px' }}>
+                                        <small className="opacity-50" style={{ fontSize: '9px' }}>{ep.emotion}</small>
+                                        <span className="fw-bold">{Math.round(ep.timeTaken / 1000)}s</span>
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                                {selectedGame.metadata.poseBreakdown && (
+                                  <div className="d-flex flex-wrap gap-2 mt-2">
+                                    {selectedGame.metadata.poseBreakdown.map((pb, i) => (
+                                      <Badge key={i} bg="dark" className="border border-secondary p-2 d-flex flex-column align-items-start" style={{ minWidth: '80px' }}>
+                                        <small className="opacity-50" style={{ fontSize: '9px' }}>{pb.poseId.replace('_', ' ')}</small>
+                                        <span className="fw-bold">{Math.round(pb.timeTaken / 1000)}s</span>
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* --- RAW DATA VERIFICATION (For Transparency) --- */}
+                                <div className="mt-4 pt-4 border-top border-secondary border-opacity-25">
+                                   <Button 
+                                     variant="outline-secondary" 
+                                     size="sm" 
+                                     className="w-100 d-flex justify-content-between align-items-center opacity-50 border-secondary"
+                                     onClick={() => setViewRaw(!viewRaw)}
+                                   >
+                                     <span className="small fw-bold text-uppercase">Raw Data Verification</span>
+                                     <small>{viewRaw ? 'Hide' : 'Show JSON'}</small>
+                                   </Button>
+                                   
+                                   {viewRaw && (
+                                     <div className="mt-3 p-3 rounded-3 bg-black border border-secondary" style={{ maxHeight: '200px', overflow: 'auto' }}>
+                                       <pre className="small text-info mb-0" style={{ fontSize: '10px' }}>
+                                         {JSON.stringify({
+                                           score: selectedGame.score,
+                                           accuracy: selectedGame.accuracy,
+                                           duration: selectedGame.duration,
+                                           level: selectedGame.levelReached,
+                                           metadata: selectedGame.metadata
+                                         }, null, 2)}
+                                       </pre>
+                                     </div>
+                                   )}
+                                </div>
+                                {selectedGame.metadata.posesMatched !== undefined && (
+                                  <div className="p-3 mt-3 rounded-3 bg-primary bg-opacity-10 border border-primary border-opacity-20">
+                                     <div className="small fw-bold mb-1">Imitation Precision</div>
+                                     <div className="h4 fw-800 mb-0">{selectedGame.metadata.posesMatched} / {selectedGame.metadata.totalPoses || 8} Poses</div>
+                                     <small className="opacity-75">Calculated Accuracy: {Math.round(selectedGame.accuracy || selectedGame.metadata.accuracy || 0)}%</small>
+                                  </div>
+                                )}
+                             </div>
+                           )}
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </div>
+                  <div className="p-4 overflow-auto" style={{ width: 350 }}>
+                    <div className="mb-4 p-3 rounded-3 bg-primary bg-opacity-10 border border-primary border-opacity-25">
+                       <h6 className="fw-bold small text-uppercase mb-2"><FaChartBar className="me-2"/> Session Summary</h6>
+                       <div className="small opacity-75">
+                          This report provides the raw performance data captured during the game session. All metrics represent direct patient interaction without clinical derivation.
+                       </div>
+                    </div>
+                    <h6 className="fw-bold small text-uppercase opacity-50 mb-3">Therapist Observations</h6>
+                    <Form.Control as="textarea" rows={12} className="bg-dark text-white border-secondary mb-4" placeholder="Enter clinical observations..." value={gameNotes} onChange={e => setGameNotes(e.target.value)} />
+                    
+                    <Button variant="primary" className="w-100 py-2 fw-bold shadow-lg mt-4" onClick={saveGameReview} disabled={savingGame}>{savingGame ? 'Saving...' : 'Mark as Reviewed'}</Button>
+                  </div>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
 
-
-export default TherapistVideoDashboard;
+export default TherapistDashboard;

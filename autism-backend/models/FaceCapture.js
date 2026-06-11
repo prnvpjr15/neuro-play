@@ -12,6 +12,10 @@ const faceCaptureSchema = new mongoose.Schema({
     enum: ["image", "video"],
     default: "image",
   },
+  therapistId: {
+    type: String,
+    required: false,
+  },
 
   // For images
   imagePath: String,

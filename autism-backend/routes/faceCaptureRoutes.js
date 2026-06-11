@@ -31,7 +31,7 @@ router.post(
   upload.fields([{ name: "video", maxCount: 1 }, { name: "thumbnail", maxCount: 1 }]),
   async (req, res) => {
     try {
-      const { userId, sessionId, duration, timestamp, gazeData, gazeSummary, faceBlurred } = req.body;
+      const { userId, therapistId, sessionId, duration, timestamp, gazeData, gazeSummary, faceBlurred } = req.body;
 
       // Safely parse incoming FormData strings
       let parsedGazeData    = [];
@@ -48,6 +48,7 @@ router.post(
 
       const videoCapture = new FaceCapture({
         userId,
+        therapistId,
         type:          "video",
         videoPath:     videoFile.path,
         videoFilename: videoFile.filename,
@@ -136,11 +137,14 @@ router.get("/video/list/:userId", async (req, res) => {
 // ─── GET /api/facecapture/videos/therapist/:therapistId — All sessions (grouped by userId on frontend) ──
 router.get("/videos/therapist/:therapistId", async (req, res) => {
   try {
-    console.log("👨‍⚕️ Fetching all videos for therapist:", req.params.therapistId);
+    const { therapistId } = req.params;
+    const query = therapistId && therapistId !== 'Therapist_Main' 
+      ? { therapistId, type: "video" } 
+      : { type: "video" };
 
     const mongoose = require("mongoose");
     const videos = await FaceCapture.aggregate([
-      { $match: { type: "video" } },
+      { $match: query },
       {
         $addFields: {
           userIdObj: {

@@ -8,8 +8,8 @@ import { FaHandPaper } from "react-icons/fa";
 // ─── Bubble Config ───
 const BUBBLE_RADIUS_MIN = 28;
 const BUBBLE_RADIUS_MAX = 50;
-const BUBBLE_SPAWN_INTERVAL = 900; // ms
-const GAME_DURATION = 60; // seconds
+const GAME_DURATION = 90; // seconds
+const LEVEL_PHASE_SECONDS = 30;
 const BUBBLE_COLORS = [
   "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4",
   "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F",
@@ -21,6 +21,23 @@ const EMOJI_SET = ["🫧", "⭐", "🎈", "💎", "🍬", "🌸", "🦋", "🎯"
 const SHORT_SUCCESS_PHRASES = [
   "Pop!", "Nice!", "Got it!", "Great!", "Boom!", "Yes!", "Awesome!"
 ];
+
+const getLevelConfig = (level) => {
+  switch (level) {
+    case 3:
+      return { spawnInterval: 520, speedMultiplier: 1.75, label: "Level 3" };
+    case 2:
+      return { spawnInterval: 700, speedMultiplier: 1.35, label: "Level 2" };
+    default:
+      return { spawnInterval: 900, speedMultiplier: 1, label: "Level 1" };
+  }
+};
+
+const calculateAccuracy = ({ popped, missed }) => {
+  const resolvedBubbles = popped + missed;
+  if (resolvedBubbles <= 0) return 0;
+  return Math.round((popped / resolvedBubbles) * 100);
+};
 
 // ─── Component ───
 const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
@@ -48,6 +65,7 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
   const [missed, setMissed] = useState(0);
   const [combo, setCombo] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
+  const [speedLevel, setSpeedLevel] = useState(1);
 
   // ─── Voice intro ───
   useEffect(() => {
@@ -162,7 +180,8 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
   // ─── Create a bubble ───
   const createBubble = useCallback((canvasW, canvasH) => {
     const radius = BUBBLE_RADIUS_MIN + Math.random() * (BUBBLE_RADIUS_MAX - BUBBLE_RADIUS_MIN);
-    const speed = 1.2 + Math.random() * 1.8;
+    const { speedMultiplier } = getLevelConfig(speedLevel);
+    const speed = (1.2 + Math.random() * 1.8) * speedMultiplier;
     return {
       id: Date.now() + Math.random(),
       x: radius + Math.random() * (canvasW - radius * 2),
@@ -176,7 +195,7 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
       popping: false,
       popFrame: 0,
     };
-  }, []);
+  }, [speedLevel]);
 
   // ─── Create pop particles ───
   const createParticles = (x, y, color) => {
@@ -338,7 +357,12 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
     let timer;
     if (gameStatus === "playing" && timeLeft > 0) {
       timer = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
+        setTimeLeft((prev) => {
+          const next = prev - 1;
+          const elapsed = GAME_DURATION - next;
+          setSpeedLevel(Math.min(3, Math.floor(elapsed / LEVEL_PHASE_SECONDS) + 1));
+          return next;
+        });
       }, 1000);
     } else if (gameStatus === "playing" && timeLeft <= 0) {
       endGame();
@@ -352,15 +376,17 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const { spawnInterval } = getLevelConfig(speedLevel);
+
     spawnTimerRef.current = setInterval(() => {
       const newBubble = createBubble(canvas.width, canvas.height);
       bubblesRef.current.push(newBubble);
       statsRef.current.total += 1;
       setTotalBubbles((prev) => prev + 1);
-    }, BUBBLE_SPAWN_INTERVAL);
+    }, spawnInterval);
 
     return () => clearInterval(spawnTimerRef.current);
-  }, [gameStatus, createBubble]);
+  }, [gameStatus, createBubble, speedLevel]);
 
   // ─── Game loop ───
   useEffect(() => {
@@ -551,7 +577,7 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
     stopBackgroundMusic();
 
     const s = statsRef.current;
-    const accuracy = s.total > 0 ? Math.round((s.popped / s.total) * 100) : 0;
+    const accuracy = calculateAccuracy(s);
     const timeSpent = gameStartTimeRef.current
       ? Math.round((Date.now() - gameStartTimeRef.current) / 1000)
       : GAME_DURATION;
@@ -560,13 +586,16 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
       onComplete({
         bubblesPopped: s.popped,
         totalBubbles: s.total,
+        missedBubbles: s.missed,
         accuracy,
         timeSpent,
+        level: 3,
       });
     }
-  }, [onComplete]);
+  }, [onComplete, stopBackgroundMusic]);
 
-  const accuracyPct = totalBubbles > 0 ? Math.round((score / totalBubbles) * 100) : 0;
+  const accuracyPct = calculateAccuracy({ popped: score, missed });
+  const levelConfig = getLevelConfig(speedLevel);
 
   return (
     <div
@@ -592,6 +621,9 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
           <h5 className={`mb-0 ${timeLeft < 10 ? "text-danger" : "text-white"}`}>
             ⏳ {timeLeft}s
           </h5>
+          <Badge bg="light" text="dark" className="fs-6 px-3 py-2">
+            {levelConfig.label}
+          </Badge>
         </div>
         <Button variant="danger" onClick={onClose}>
           Exit
@@ -624,6 +656,9 @@ const MagicHandsGame = ({ onComplete, onClose, speak, t }) => {
                 <p className="text-white-50 small mb-0">
                   Point at the bubbles to pop them!
                 </p>
+                <Badge bg="info" className="mt-3">
+                  Faster every 30 seconds
+                </Badge>
               </div>
 
               <div className="w-100 text-start p-3 rounded-3" style={{ background: "rgba(255,255,255,0.05)" }}>

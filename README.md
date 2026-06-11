@@ -28,7 +28,7 @@ NeuroPlay is a comprehensive therapeutic gaming platform designed for children w
 ### 🎨 Customizable Theme System
 - **7 Professional Color Themes**: Light, Dark, Ocean Blue, Forest Green, Sunset Orange, Lavender Purple, High Contrast
 - Persistent theme storage (localStorage)
-- Smooth theme transitions
+- Smooth theme transitions with optimized text contrast
 - Accessibility-first design
 
 ### 📊 Advanced Analytics & Clinical Tools
@@ -38,24 +38,22 @@ NeuroPlay is a comprehensive therapeutic gaming platform designed for children w
 - Interactive charts (Recharts)
 - Clinical feedback generation
 - Support level classification
-- Detailed emotion performance analysis
-- Weekly activity dashboards
 
 ### 👥 Multi-User Support with Role-Based Access
 
 | Role | Access Level | Dashboard |
 |------|-------------|-----------|
-| **Student** | Game access, personal progress | UserDashboard |
+| **Student** | Streamlined Arcade access, personal progress | UserDashboard |
 | **Parent** | Monitor child's progress & achievements | ParentDashboard |
-| **Therapist** | Clinical assessment & detailed analytics | TherapistDashboard |
+| **Therapist** | Patient Session Vault, detailed clinical review | TherapistDashboard |
 | **Admin** | System management & user administration | AdminDashboard |
 
-### 🤖 AI-Powered Features
+### 🤖 AI-Powered Features & Privacy
 - Real-time face detection & emotion recognition
 - Body pose estimation & form analysis
 - Eye gaze tracking for engagement metrics
+- **Privacy-Preserving Face Blur**: On-device real-time face blurring during clinical video recording, ensuring patient anonymity while preserving body movement and behavioral data.
 - Facial expression analysis
-- Video recording & analysis capabilities
 
 ### 🌍 Accessibility & Internationalization
 - Multi-language support (English & Hindi)
@@ -192,7 +190,18 @@ brew services start mongodb-community
 
 ## 🚀 Running the Project
 
-### **Option 1: Separate Terminals**
+### **Option 1: Single Command (Recommended)**
+
+From the project root:
+```bash
+npm install
+npm run install:all
+npm start
+# Backend: http://localhost:4000
+# Frontend: http://localhost:3000
+```
+
+### **Option 2: Separate Terminals**
 
 Terminal 1 - Backend:
 ```bash
@@ -204,18 +213,8 @@ npm start
 Terminal 2 - Frontend:
 ```bash
 cd autism-dashboard
-npm run dev
-# Runs on http://localhost:5173
-```
-
-### **Option 2: Windows Batch Script**
-```bash
-./start-project.bat
-```
-
-### **Option 3: PowerShell Script**
-```bash
-.\start-project.ps1
+npm start
+# Runs on http://localhost:3000
 ```
 
 ---
@@ -246,19 +245,12 @@ NeuroPlay/
 │   │   ├── auth.js            # JWT authentication
 │   │   └── validation.js      # Input validation
 │   ├── utils/
-│   │   ├── demo.js
 │   │   └── videoAnalyzer.js
-│   ├── uploads/
-│   │   ├── face_data/         # Face capture data
-│   │   └── videos/            # Uploaded videos
+│   ├── uploads/               # Runtime media (gitignored)
 │   ├── scripts/
 │   │   └── cleanupFaceData.js
 │   ├── server.js              # Main server entry
-│   ├── checkSchema.js
-│   ├── demo.js
-│   ├── patch.js
-│   ├── verifyDetailed.js
-│   ├── verifyEyeTrackingData.js
+│   ├── .env.example
 │   └── package.json
 │
 ├── autism-dashboard/
@@ -306,16 +298,14 @@ NeuroPlay/
 │   │       └── tiny_face_detector_model-*
 │   ├── index.html
 │   ├── vite.config.js
+│   ├── .env.example
 │   └── package.json
 │
-├── create-test-user.js        # Test user creation script
-├── test-backend.js            # Backend tests
-├── test-project.js            # Project tests
-├── start-project.bat          # Windows startup script
-├── start-project.ps1          # PowerShell startup script
 ├── README.md
+├── LICENSE
 ├── PROJECT_DOCUMENTATION.md   # Detailed documentation
 ├── THEME_IMPLEMENTATION_GUIDE.md
+├── package.json               # Root scripts (npm start runs both apps)
 └── .gitignore
 ```
 
@@ -325,8 +315,8 @@ NeuroPlay/
 
 ### 🎓 For Students
 1. **Sign Up** - Create account or login
-2. **Home Dashboard** - View level, points, and recommendations
-3. **Select Game** - Go to Arcade and choose a game
+2. **Arcade Dashboard** - Immediate access to the therapeutic games library
+3. **Select Game** - Choose a game from the Arcade
 4. **Play** - Follow voice instructions through the game
 5. **Review Results** - See score, feedback, and skill analysis
 6. **Track Progress** - Monitor improvements in Progress tab
@@ -339,11 +329,11 @@ NeuroPlay/
 - **Child Management** - Link and manage children accounts
 
 ### 👨‍⚕️ For Therapists
+- **Patient Session Vault** - Direct access to all patient records and video sessions
 - **Clinical Assessment** - Access detailed game analytics
 - **Skill Tracking** - Monitor specific developmental areas
 - **Support Levels** - Classification (Independent/Emerging/Needs Support)
 - **Feedback Generation** - Automated clinical insights
-- **Student Management** - Manage multiple students
 
 ### 🔧 For Admins
 - **User Management** - Create/manage accounts
@@ -355,7 +345,7 @@ NeuroPlay/
 
 ## 🎨 Theme System
 
-Users can select from 7 themes via sidebar buttons:
+Users can select from 7 themes via sidebar buttons. The system ensures high contrast for all sidebars and text elements.
 
 | Theme | Best For | Colors |
 |-------|----------|--------|
@@ -427,6 +417,7 @@ See [THEME_IMPLEMENTATION_GUIDE.md](./THEME_IMPLEMENTATION_GUIDE.md) for technic
 
 ## 🔐 Security Features
 
+- ✅ **Privacy-First Blur**: Real-time face anonymization option
 - ✅ JWT token-based authentication
 - ✅ Password hashing (bcrypt)
 - ✅ CORS protection (whitelisted origins)
@@ -490,7 +481,7 @@ See [THEME_IMPLEMENTATION_GUIDE.md](./THEME_IMPLEMENTATION_GUIDE.md) for technic
 
 ---
 
-## �️ Database Schema
+## ️ Database Schema
 
 ### User Collection
 ```javascript
@@ -544,7 +535,7 @@ See [THEME_IMPLEMENTATION_GUIDE.md](./THEME_IMPLEMENTATION_GUIDE.md) for technic
 
 ---
 
-## �🐛 Troubleshooting
+## 🐛 Troubleshooting
 
 ### MongoDB Connection Error
 ```bash
@@ -675,4 +666,4 @@ MIT License - See [LICENSE](LICENSE) file for details
 
 ---
 
-*Last Updated: April 21, 2026*
+*Last Updated: May 7, 2026*

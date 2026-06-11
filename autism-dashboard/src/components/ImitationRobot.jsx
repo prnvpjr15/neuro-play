@@ -36,11 +36,6 @@ export default function ImitationRobot({ poseId }) {
           ls: [0, 0, Math.PI / 2], le: [0, 0, 0],
           rs: [0, 0, -Math.PI / 2], re: [0, 0, 0]
         };
-      case "hands_head":
-        return {
-          ls: [Math.PI/2, 0, Math.PI/1.2], le: [Math.PI/1.2, 0, 0],
-          rs: [Math.PI/2, 0, -Math.PI/1.2], re: [Math.PI/1.2, 0, 0]
-        };
       case "namaste":
         return {
           ls: [Math.PI/2.5, 0.5, Math.PI/4], le: [Math.PI/1.5, 0, 0],
@@ -142,7 +137,7 @@ export default function ImitationRobot({ poseId }) {
         </group>
 
         {/* --- LEFT ARM --- */}
-        <group position={[1.5, 4.3, 0]} ref={leftShoulderGroup}>
+        <group position={[-1.5, 4.3, 0]} ref={leftShoulderGroup}>
           <mesh material={jointMaterial}>
              <sphereGeometry args={[0.5, 32, 32]} />
           </mesh>
@@ -166,7 +161,7 @@ export default function ImitationRobot({ poseId }) {
 
 
         {/* --- RIGHT ARM --- */}
-        <group position={[-1.5, 4.3, 0]} ref={rightShoulderGroup}>
+        <group position={[1.5, 4.3, 0]} ref={rightShoulderGroup}>
           <mesh material={jointMaterial}>
              <sphereGeometry args={[0.5, 32, 32]} />
           </mesh>

@@ -48,7 +48,7 @@ router.post('/upload-game-video', gameplayUpload.single('video'), async (req, re
 router.post('/save', async (req, res) => {
   console.log("📥 Received game session save request:", req.body);
   
-  const { userId, therapistId, username, gameId, gameName, score, levelReached, metadata, gameVideoUrl, gameVideoFilename, faceBlurred } = req.body;
+  const { userId, therapistId, username, gameId, gameName, score, accuracy, duration, levelReached, metadata, gameVideoUrl, gameVideoFilename, faceBlurred } = req.body;
 
   // Input validation
   if (!userId || !gameId || !gameName || score === undefined) {
@@ -77,6 +77,8 @@ router.post('/save', async (req, res) => {
       gameId,
       gameName,
       score: Math.round(score),
+      accuracy: typeof accuracy === 'number' ? Math.round(accuracy) : undefined,
+      duration: typeof duration === 'number' ? duration : undefined,
       levelReached: levelReached || 1,
       metadata: metadata || {},
       gameVideoUrl: gameVideoUrl || null,
@@ -145,11 +147,16 @@ router.get('/stats/:userId', async (req, res) => {
       historyData.push({
         day,
         score: session.score,
-        game: session.gameName
+        game: session.gameName,
+        metadata: session.metadata
       });
     });
 
-    res.json({ gameStats, historyData });
+    res.status(200).json({
+      gameStats,
+      historyData,
+      sessions
+    });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -161,8 +168,13 @@ router.get('/therapist/:therapistId', async (req, res) => {
   try {
     const { therapistId } = req.params;
 
-    // Demo-friendly fallback: include sessions without therapistId linkage too.
-    const sessions = await GameSession.find({})
+    // Filter by therapistId to ensure privacy and data segregation.
+    // Fallback to empty if therapistId is missing to prevent global leak.
+    const query = therapistId && therapistId !== 'Therapist_Main'
+      ? { therapistId }
+      : {};
+
+    const sessions = await GameSession.find(query)
       .sort({ playedAt: -1 })
       .limit(200)
       .lean();
