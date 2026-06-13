@@ -619,6 +619,7 @@ npm run lint
 ## 📚 Documentation
 
 - [Theme Implementation Guide](./THEME_IMPLEMENTATION_GUIDE.md)
+- [AI Agent Workflow](./docs/ai-agent-workflow/README.md)
 - [Backend API Documentation](./autism-backend/API_DOCS.md)
 - [Game Development Guide](./GAME_DEVELOPMENT.md)
 
