@@ -14,7 +14,13 @@ NeuroPlay is a comprehensive therapeutic gaming platform designed for children w
 
 ## 🌟 Key Features
 
-##WorkFlow Diagram
+# NeuroPlay AI Agent Workflow
+
+This document explains how the proposed AI agent workflow connects to NeuroPlay's existing therapeutic gaming platform. The current project already captures game performance, face-expression signals, pose data, hand-tracking activity, eye-gaze metrics, and user progress through a React frontend and Express/MongoDB backend. The workflow below describes how those signals can be organized into an AI-assisted therapy support layer.
+
+## Workflow Diagram
+
+```mermaid
 flowchart TD
     A["1. Login<br/>Roles: student, parent, therapist, admin"]
     B["2. Memory / Context<br/>Language preference, child profile, therapist notes"]
@@ -61,7 +67,7 @@ flowchart TD
     Q --> T["17. Next Session Loop<br/>Returns to the game domain router"]
 
     T -.-> C
-
+```
 
 ### 🎮 Interactive Games (6 Total)
 
